@@ -68,7 +68,7 @@ compatibility_date = "2024-01-01"
 
 [env.production]
 routes = [
-  { pattern = "api.zenfast.app/*", zone_name = "zenfast.app" }
+  { pattern = "api.zenfast.eu/*", zone_name = "zenfast.eu" }
 ]
 
 [[d1_databases]]
@@ -214,7 +214,7 @@ app.delete('/api/v1/fasts/:id', authenticate, deleteFast);
 ```typescript
 interface R2Config {
   bucket: "zenfast-storage";
-  publicUrl: "https://storage.zenfast.app";
+  publicUrl: "https://storage.zenfast.eu";
   folders: {
     exports: "exports/",
     backups: "backups/",

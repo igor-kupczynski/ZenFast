@@ -7,7 +7,7 @@ The ZenFast API provides endpoints for managing intermittent fasting sessions. U
 ## Base URL
 
 ```
-https://<domain>/api/v1
+https://api.zenfast.eu/v1
 ```
 
 For local development:
@@ -391,7 +391,7 @@ DELETE /api/v1/fasts/:id
 
 1. **Register a new user:**
 ```bash
-curl -X POST https://<domain>/api/v1/auth/register \
+curl -X POST https://api.zenfast.eu/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -402,7 +402,7 @@ curl -X POST https://<domain>/api/v1/auth/register \
 
 2. **Start a fast:**
 ```bash
-curl -X POST https://<domain>/api/v1/fasts \
+curl -X POST https://api.zenfast.eu/v1/fasts \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{}'
@@ -410,13 +410,13 @@ curl -X POST https://<domain>/api/v1/fasts \
 
 3. **Check current fast:**
 ```bash
-curl -X GET https://<domain>/api/v1/fasts/current \
+curl -X GET https://api.zenfast.eu/v1/fasts/current \
   -H "Authorization: Bearer <token>"
 ```
 
 4. **End the fast:**
 ```bash
-curl -X PATCH https://<domain>/api/v1/fasts/<fast-id> \
+curl -X PATCH https://api.zenfast.eu/v1/fasts/<fast-id> \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -426,7 +426,7 @@ curl -X PATCH https://<domain>/api/v1/fasts/<fast-id> \
 
 5. **View fasting history:**
 ```bash
-curl -X GET https://<domain>/api/v1/fasts?limit=10 \
+curl -X GET https://api.zenfast.eu/v1/fasts?limit=10 \
   -H "Authorization: Bearer <token>"
 ```
 
