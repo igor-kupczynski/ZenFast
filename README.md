@@ -28,8 +28,7 @@ zenfast/
 ├── backend/          # Backend API (Go or TypeScript)
 ├── specs/            # API and infrastructure specifications
 │   ├── api.md        # REST API specification
-│   ├── infra-cloudflare.md  # Cloudflare stack details
-│   └── infra-gcp.md  # Google Cloud stack details
+│   └── infra-cloudflare.md  # Cloudflare stack details
 ├── docs.local/       # Research and documentation
 └── README.md
 ```
