@@ -124,13 +124,13 @@ Before starting, ensure you have:
   ```
 
 ### Step 2.3: Set Up Environment Variables
-- [ ] Create `.env.development.template`:
+- [X] Create `.env.development.template`:
   ```
   JWT_SECRET=your-jwt-secret
   APP_URL=http://localhost:8787
   ```
-- [ ] Copy `.env.development.template` to `.env.development` and fill in with actual values
-- [ ] Update `.gitignore` to exclude env files but include templates:
+- [X] Copy `.env.development.template` to `.env.development` and fill in with actual values
+- [X] Update `.gitignore` to exclude env files but include templates:
   ```
   .env.*
   !.env.*.template
