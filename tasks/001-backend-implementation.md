@@ -92,9 +92,9 @@ Before starting, ensure you have:
 ## Phase 2: Project Setup and Configuration
 
 ### Step 2.1: Initialize TypeScript Project
-- [ ] Navigate to `backend/` directory
-- [ ] Run `npm init -y`
-- [ ] Install dependencies:
+- [X] Navigate to `backend/` directory
+- [X] Run `npm init -y`
+- [X] Install dependencies:
   ```bash
   npm install hono @hono/zod-validator zod jose uuid
   npm install -D @cloudflare/workers-types wrangler typescript vitest @types/node
@@ -102,7 +102,7 @@ Before starting, ensure you have:
   ```
 
 ### Step 2.2: Configure TypeScript
-- [ ] Create `tsconfig.json`:
+- [X] Create `tsconfig.json`:
   ```json
   {
     "compilerOptions": {
