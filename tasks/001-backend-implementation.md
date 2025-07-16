@@ -146,16 +146,28 @@ Before starting, ensure you have:
   main = "src/index.ts"
   compatibility_date = "2024-01-15"
 
-  routes = [
-    { pattern = "api.zenfast.eu/*", zone_name = "zenfast.eu" }
-  ]
-
+  # Development environment (default)
   [[d1_databases]]
   binding = "DB"
   database_name = "zenfast"
   database_id = "<from-terraform-output>"
 
   [[kv_namespaces]]
+  binding = "SESSIONS"
+  id = "<from-terraform-output>"
+
+  # Production environment
+  [env.production]
+  routes = [
+    { pattern = "api.zenfast.eu/*", zone_name = "zenfast.eu" }
+  ]
+
+  [[env.production.d1_databases]]
+  binding = "DB"
+  database_name = "zenfast"
+  database_id = "<from-terraform-output>"
+
+  [[env.production.kv_namespaces]]
   binding = "SESSIONS"
   id = "<from-terraform-output>"
   ```
@@ -168,13 +180,80 @@ Before starting, ensure you have:
       "dev": "wrangler dev",
       "deploy": "wrangler deploy",
       "test": "vitest",
+      "test:watch": "vitest --watch",
       "lint": "eslint src/",
-      "format": "prettier --write src/"
+      "lint:fix": "eslint src/ --fix",
+      "format": "prettier --write src/",
+      "format:check": "prettier --check src/",
+      "typecheck": "tsc --noEmit"
     }
   }
   ```
 
-**Checkpoint**: Project is configured with TypeScript and Wrangler.
+### Step 2.6: Configure Code Quality Tools
+- [ ] Create `.eslintrc.json`:
+  ```json
+  {
+    "root": true,
+    "parser": "@typescript-eslint/parser",
+    "plugins": ["@typescript-eslint"],
+    "extends": [
+      "eslint:recommended",
+      "plugin:@typescript-eslint/recommended",
+      "prettier"
+    ],
+    "env": {
+      "node": true,
+      "es2022": true
+    },
+    "rules": {
+      "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+      "@typescript-eslint/explicit-module-boundary-types": "off"
+    }
+  }
+  ```
+- [ ] Create `.prettierrc`:
+  ```json
+  {
+    "semi": true,
+    "trailingComma": "es5",
+    "singleQuote": true,
+    "printWidth": 100,
+    "tabWidth": 2
+  }
+  ```
+- [ ] Create `vitest.config.ts`:
+  ```typescript
+  import { defineConfig } from 'vitest/config';
+
+  export default defineConfig({
+    test: {
+      environment: 'miniflare',
+      environmentOptions: {
+        bindings: {
+          JWT_SECRET: 'test-secret'
+        }
+      }
+    }
+  });
+  ```
+
+### Step 2.7: Verify Setup
+- [ ] Run `terraform/tf.sh output -json > terraform-outputs.json` to capture resource IDs
+- [ ] Verify database_id and kv_namespace_id are populated in `wrangler.toml`
+- [ ] Run `npm run typecheck` to ensure TypeScript is properly configured
+- [ ] Create `src/index.ts` with minimal content:
+  ```typescript
+  export default {
+    async fetch(): Promise<Response> {
+      return new Response('Hello ZenFast!', { status: 200 });
+    },
+  };
+  ```
+- [ ] Run `npm run dev` and verify the worker responds at `http://localhost:8787`
+- [ ] Run `npm run lint` and `npm run format:check` to verify code quality tools work
+
+**Checkpoint**: Project is configured with TypeScript, Wrangler, and code quality tools verified.
 
 ## Phase 3: Database Schema and Migrations
 
