@@ -17,7 +17,6 @@ graph TB
     end
     
     subgraph "External Services"
-        G[Google OAuth]
         T[Telegram Bot API]
     end
     
@@ -33,7 +32,6 @@ graph TB
     W --> D1
     W --> R2
     W --> KV
-    W --> G
 ```
 
 ## Technology Stack
@@ -51,9 +49,8 @@ graph TB
 - **Cache**: Workers Cache API
 
 ### Authentication
-- **Strategy**: JWT with social OAuth providers
-- **Providers**: Google OAuth 2.0 (primary), extensible to others
-- **Session Management**: Stateless JWT with KV-backed refresh tokens
+- **Strategy**: Manual user creation with password-based login
+- **Session Management**: Stateless JWT (no refresh tokens for simplicity)
 
 ## Detailed Component Specifications
 
@@ -105,7 +102,7 @@ CREATE TABLE users (
     id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
-    google_id TEXT UNIQUE,
+    password_hash TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -128,6 +125,7 @@ CREATE TABLE fasts (
 CREATE INDEX idx_fasts_user_id ON fasts(user_id);
 CREATE INDEX idx_fasts_started_at ON fasts(started_at);
 CREATE INDEX idx_fasts_ended_at ON fasts(ended_at);
+CREATE INDEX idx_users_email ON users(email);
 ```
 
 **Backup Strategy**:
@@ -151,40 +149,38 @@ interface JWTPayload {
   email: string;
   name: string;
   iat: number;
-  exp: number;      // 15 minutes
+  exp: number;      // 24 hours
   jti: string;      // JWT ID for revocation
-}
-
-interface RefreshToken {
-  userId: string;
-  tokenId: string;
-  createdAt: number;
-  expiresAt: number; // 30 days
 }
 ```
 
-**OAuth Flow**:
-1. Client redirects to Google OAuth
-2. Google redirects back with code
-3. Worker exchanges code for tokens
-4. Worker creates/updates user record
-5. Worker issues JWT + refresh token
-6. Refresh token stored in KV
+**Password-Based Login Flow**:
+1. User submits email and password
+2. System looks up user by email
+3. Verify password against stored bcrypt hash (cost factor 10)
+4. If valid, generate JWT token
+5. Return JWT token to client
+6. Client includes JWT in Authorization header for subsequent requests
+
+**Manual User Creation**:
+- Users are created manually via database insertion
+- Password hashes must be generated using bcrypt with cost factor 10
+- Example SQL: `INSERT INTO users (id, email, name, password_hash) VALUES ('uuid', 'email', 'name', '$2b$10$...')`
 
 **Security Considerations**:
-- JWT signed with ES256 (ECDSA)
-- Refresh tokens in KV with automatic expiration
+- Passwords stored as bcrypt hashes (never plain text)
+- JWT signed with HS256
+- JWT expires after 24 hours (no refresh tokens for simplicity)
 - CORS configured for specific origins
-- Rate limiting via Cloudflare rules
+- Rate limiting on auth endpoints (5 requests/min)
+- Manual user creation prevents unauthorized registrations
 
 ### 4. API Implementation
 
 **Route Structure**:
 ```typescript
 // src/routes/auth.ts
-app.post('/api/v1/auth/google', googleOAuthHandler);
-app.post('/api/v1/auth/refresh', refreshTokenHandler);
-app.post('/api/v1/auth/logout', logoutHandler);
+app.post('/api/v1/auth/login', loginHandler);
 
 // src/routes/fasts.ts
 app.post('/api/v1/fasts', authenticate, createFast);
@@ -355,10 +351,10 @@ async function exportToR2() {
 ## Operational Runbook
 
 ### Common Tasks
-1. **Adding new OAuth provider**
-   - Update OAuth configuration
-   - Add provider-specific handler
-   - Update JWT claims mapping
+1. **Adding new users**
+   - Generate bcrypt password hash (cost factor 10)
+   - Insert user record via SQL
+   - Test login with new credentials
 
 2. **Database schema changes**
    - Create migration file

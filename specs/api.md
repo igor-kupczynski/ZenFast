@@ -23,7 +23,12 @@ The API uses JWT (JSON Web Token) authentication. Include the token in the Autho
 Authorization: Bearer <your-jwt-token>
 ```
 
-Tokens are obtained through the `/auth/register` or `/auth/login` endpoints.
+Authentication flow:
+1. Users are manually added to the database with bcrypt password hashes
+2. Login with email and password via `/auth/login`
+3. Receive JWT token for subsequent requests
+
+Note: User registration is manual for now. Magic links will be implemented later.
 
 ## Response Format
 
@@ -65,44 +70,6 @@ All responses follow a consistent JSON structure:
 
 ### Authentication
 
-#### Register User
-
-Creates a new user account.
-
-```
-POST /api/v1/auth/register
-```
-
-**Request Body:**
-```json
-{
-  "email": "user@example.com",
-  "password": "securepassword123",
-  "name": "John Doe"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "user": {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
-      "email": "user@example.com",
-      "name": "John Doe",
-      "created_at": "2024-01-15T08:00:00Z"
-    }
-  },
-  "error": null
-}
-```
-
-**Status Codes:**
-- `201` - User created successfully
-- `400` - Validation error
-- `409` - Email already exists
-
 #### Login
 
 Authenticates a user and returns a JWT token.
@@ -115,7 +82,7 @@ POST /api/v1/auth/login
 ```json
 {
   "email": "user@example.com",
-  "password": "securepassword123"
+  "password": "userpassword123"
 }
 ```
 
@@ -138,7 +105,10 @@ POST /api/v1/auth/login
 
 **Status Codes:**
 - `200` - Login successful
-- `401` - Invalid credentials
+- `401` - Invalid credentials (user not found or wrong password)
+- `400` - Validation error
+
+**Note:** Users must be manually added to the database with bcrypt password hashes before they can login.
 
 ### Fasting Management
 
@@ -389,15 +359,15 @@ DELETE /api/v1/fasts/:id
 
 ### Complete User Flow
 
-1. **Register a new user:**
+1. **Login with email and password:**
 ```bash
-curl -X POST https://api.zenfast.eu/v1/auth/register \
+curl -X POST https://api.zenfast.eu/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
-    "password": "securepassword123",
-    "name": "John Doe"
+    "password": "userpassword123"
   }'
+# Returns JWT token to use in subsequent requests
 ```
 
 2. **Start a fast:**

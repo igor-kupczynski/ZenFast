@@ -126,11 +126,8 @@ Before starting, ensure you have:
 ### Step 2.3: Set Up Environment Variables
 - [ ] Create `.env.development.template`:
   ```
-  APPLE_TEAM_ID=your-apple-team-id
-  APPLE_SERVICE_ID=your-apple-service-id
-  APPLE_KEY_ID=your-apple-key-id
-  APPLE_PRIVATE_KEY=your-apple-private-key-content
   JWT_SECRET=your-jwt-secret
+  APP_URL=http://localhost:8787
   ```
 - [ ] Copy `.env.development.template` to `.env.development` and fill in with actual values
 - [ ] Update `.gitignore` to exclude env files but include templates:
@@ -144,7 +141,7 @@ Before starting, ensure you have:
   ```toml
   name = "zenfast-api"
   main = "src/index.ts"
-  compatibility_date = "2024-01-15"
+  compatibility_date = "2024-01-01"
 
   # Development environment (default)
   [[d1_databases]]
@@ -156,6 +153,10 @@ Before starting, ensure you have:
   binding = "SESSIONS"
   id = "<from-terraform-output>"
 
+  [[r2_buckets]]
+  binding = "STORAGE"
+  bucket_name = "zenfast-storage"
+
   # Production environment
   [env.production]
   routes = [
@@ -164,12 +165,16 @@ Before starting, ensure you have:
 
   [[env.production.d1_databases]]
   binding = "DB"
-  database_name = "zenfast"
+  database_name = "zenfast-prod"
   database_id = "<from-terraform-output>"
 
   [[env.production.kv_namespaces]]
   binding = "SESSIONS"
   id = "<from-terraform-output>"
+
+  [[env.production.r2_buckets]]
+  binding = "STORAGE"
+  bucket_name = "zenfast-storage"
   ```
 
 ### Step 2.5: Add NPM Scripts
@@ -266,7 +271,7 @@ Before starting, ensure you have:
       id TEXT PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
       name TEXT NOT NULL,
-      apple_id TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );
@@ -300,7 +305,18 @@ Before starting, ensure you have:
 - [ ] Apply migrations: `wrangler d1 migrations apply zenfast`
 - [ ] Verify migrations: `wrangler d1 execute zenfast --command "SELECT * FROM sqlite_master"`
 
-### Step 3.3: Create Type Definitions
+### Step 3.3: Create Initial Users (Manual)
+- [ ] After applying migrations, manually add users via SQL:
+  ```sql
+  -- Example: Add a test user with bcrypt password hash
+  -- Password: "testpassword123" (use bcrypt with cost 10)
+  INSERT INTO users (id, email, name, password_hash) VALUES 
+  ('550e8400-e29b-41d4-a716-446655440000', 'test@example.com', 'Test User', '$2b$10$YourBcryptHashHere');
+  ```
+- [ ] Use `wrangler d1 execute zenfast --command "INSERT INTO users..."` to add users
+- [ ] Generate password hashes using bcrypt (cost factor 10) before inserting
+
+### Step 3.4: Create Type Definitions
 - [ ] Create `src/types/` directory
 - [ ] Create `src/types/models.ts`:
   ```typescript
@@ -308,7 +324,7 @@ Before starting, ensure you have:
     id: string;
     email: string;
     name: string;
-    apple_id: string;
+    password_hash: string;
     created_at: string;
     updated_at: string;
   }
@@ -338,11 +354,9 @@ Before starting, ensure you have:
   export interface Env {
     DB: D1Database;
     SESSIONS: KVNamespace;
-    APPLE_TEAM_ID: string;
-    APPLE_SERVICE_ID: string;
-    APPLE_KEY_ID: string;
-    APPLE_PRIVATE_KEY: string;
+    STORAGE: R2Bucket;
     JWT_SECRET: string;
+    APP_URL: string;
   }
 
   const app = new Hono<{ Bindings: Env }>();
@@ -378,42 +392,106 @@ Before starting, ensure you have:
 
 **Checkpoint**: Basic application structure is working with health check endpoint.
 
-## Phase 5: Apple Sign In Authentication
+## Phase 5: Simple Authentication (Manual Users)
 
-### Step 5.1: Configure Apple Sign In
-- [ ] In Apple Developer Console:
-  - Create App ID with Sign in with Apple capability
-  - Create Service ID for web authentication
-  - Create private key for Sign in with Apple
-  - Configure return URLs
-- [ ] Save credentials securely for later use
+### Step 5.1: Create User Repository
+- [ ] Create `src/repositories/userRepository.ts`:
+  ```typescript
+  export class UserRepository {
+    constructor(private db: D1Database) {}
+    
+    async findByEmail(email: string): Promise<User | null> {
+      const result = await this.db
+        .prepare('SELECT * FROM users WHERE email = ?')
+        .bind(email)
+        .first();
+      return result || null;
+    }
+    
+    async findById(id: string): Promise<User | null> {
+      const result = await this.db
+        .prepare('SELECT * FROM users WHERE id = ?')
+        .bind(id)
+        .first();
+      return result || null;
+    }
+  }
+  ```
 
-### Step 5.2: Implement Apple OAuth Flow
-- [ ] Create `src/routes/auth.ts`
-- [ ] Implement `/api/v1/auth/apple` endpoint
-- [ ] Implement Apple client secret generation
-- [ ] Implement token exchange with Apple
-- [ ] Create or update user on successful auth
+### Step 5.2: Implement Login with Password
+- [ ] Install bcrypt for password verification: `npm install bcryptjs @types/bcryptjs`
+- [ ] Create `src/routes/auth.ts` with login endpoint:
+  - POST `/api/v1/auth/login` - Login with email and password
+    - Look up user by email
+    - Verify password hash using bcrypt
+    - If valid, generate JWT
+    - Return JWT and user info
+    - If invalid, return 401
+- [ ] Example login handler:
+  ```typescript
+  import bcrypt from 'bcryptjs';
+  
+  const user = await userRepository.findByEmail(email);
+  if (!user) return c.json({ error: 'Invalid credentials' }, 401);
+  
+  const validPassword = await bcrypt.compare(password, user.password_hash);
+  if (!validPassword) return c.json({ error: 'Invalid credentials' }, 401);
+  ```
 
 ### Step 5.3: Implement JWT Management
-- [ ] Create `src/utils/jwt.ts`
-- [ ] Implement JWT generation with user claims
-- [ ] Implement JWT validation middleware
-- [ ] Implement refresh token flow with KV
+- [ ] Create `src/utils/jwt.ts`:
+  ```typescript
+  import { SignJWT, jwtVerify } from 'jose';
+  
+  export async function createJWT(user: User, secret: string): Promise<string> {
+    const jwt = await new SignJWT({ 
+      sub: user.id,
+      email: user.email,
+      name: user.name 
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('24h')
+      .sign(new TextEncoder().encode(secret));
+    return jwt;
+  }
+  
+  export async function verifyJWT(token: string, secret: string) {
+    const { payload } = await jwtVerify(
+      token,
+      new TextEncoder().encode(secret)
+    );
+    return payload;
+  }
+  ```
 
 ### Step 5.4: Create Auth Middleware
-- [ ] Create `src/middleware/auth.ts`
-- [ ] Implement JWT validation
-- [ ] Add user context to requests
-- [ ] Handle token expiration
+- [ ] Create `src/middleware/auth.ts`:
+  ```typescript
+  export async function authenticate(c: Context, next: Next) {
+    const token = c.req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+    
+    try {
+      const payload = await verifyJWT(token, c.env.JWT_SECRET);
+      c.set('userId', payload.sub);
+      c.set('user', payload);
+      await next();
+    } catch {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+  }
+  ```
 
-### Step 5.5: Test Authentication Flow
-- [ ] Create test HTML page with Apple Sign In button
-- [ ] Test complete OAuth flow
+### Step 5.5: Test Authentication
+- [ ] Manually add test users to database
+- [ ] Test login endpoint with curl
 - [ ] Verify JWT generation
-- [ ] Test protected endpoint access
+- [ ] Test protected endpoints with JWT
 
-**Checkpoint**: Apple Sign In is fully functional with JWT authentication.
+**Checkpoint**: Basic authentication is working with manually created users.
 
 ## Phase 6: API Endpoints Implementation
 
@@ -429,8 +507,13 @@ Before starting, ensure you have:
 ### Step 6.2: Add Validation
 - [ ] Create Zod schemas for all endpoints
 - [ ] Implement request validation middleware
-- [ ] Add business rule validation (one fast per day)
-- [ ] Implement proper error responses
+- [ ] Add business rule validation:
+  - One fast per day constraint
+  - User must be authenticated for fast operations
+- [ ] Implement proper error responses:
+  - 401 for unauthenticated requests
+  - 400 for validation errors
+  - 409 for business rule violations
 
 ### Step 6.3: Connect All Routes
 - [ ] Import all routes in `src/index.ts`
@@ -533,9 +616,13 @@ Before starting, ensure you have:
 3. **Two tokens required**: 
    - Cloudflare API token for managing resources (D1, KV, R2)
    - R2-scoped token for Terraform state backend only
-4. **Apple Sign In failing**: Verify all IDs match and return URLs are configured
-5. **D1 migration errors**: Check SQL syntax and foreign key constraints
-6. **Wrangler deployment fails**: Verify all environment variables are set
+4. **Authentication failing**: 
+   - Verify user exists in database
+   - Check JWT_SECRET is set correctly
+   - Ensure Authorization header format is correct: `Bearer <token>`
+5. **User not found**: Add user manually with password hash: `wrangler d1 execute zenfast --command "INSERT INTO users (id, email, name, password_hash) VALUES ('uuid-here', 'user@example.com', 'User Name', '$2b$10$...')"`
+6. **D1 migration errors**: Check SQL syntax and foreign key constraints
+7. **Wrangler deployment fails**: Verify all environment variables are set
 
 ### Useful Commands
 ```bash
