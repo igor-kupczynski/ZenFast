@@ -20,15 +20,3 @@ These assumptions inform our technical decisions:
 - **Clients**: Start with simple clients (Telegram bot, basic web app)
 - **Operations**: Must be maintainable in <1 hour/week
 
-
-## Structure
-
-```
-zenfast/
-├── backend/          # Backend API (Go or TypeScript)
-├── specs/            # API and infrastructure specifications
-│   ├── api.md        # REST API specification
-│   └── infra-cloudflare.md  # Cloudflare stack details
-├── docs.local/       # Research and documentation
-└── README.md
-```
