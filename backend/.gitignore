@@ -13,6 +13,10 @@ build/
 .env.*
 !.env.*.template
 
+# Wrangler config (contains sensitive IDs)
+wrangler.toml
+!wrangler.toml.template
+
 # Wrangler
 .wrangler/
 

@@ -1,0 +1,36 @@
+name = "zenfast-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# Development environment (default)
+[[d1_databases]]
+binding = "DB"
+database_name = "zenfast"
+database_id = "<D1_DATABASE_ID>"
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "<KV_SESSIONS_ID>"
+
+[[r2_buckets]]
+binding = "STORAGE"
+bucket_name = "<R2_BUCKET_NAME>"
+
+# Production environment
+[env.production]
+routes = [
+  { pattern = "api.zenfast.eu/*", zone_name = "zenfast.eu" }
+]
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "zenfast-prod"
+database_id = "<D1_DATABASE_ID_PROD>"
+
+[[env.production.kv_namespaces]]
+binding = "SESSIONS"
+id = "<KV_SESSIONS_ID_PROD>"
+
+[[env.production.r2_buckets]]
+binding = "STORAGE"
+bucket_name = "<R2_BUCKET_NAME_PROD>"

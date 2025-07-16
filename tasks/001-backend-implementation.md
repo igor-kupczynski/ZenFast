@@ -137,7 +137,16 @@ Before starting, ensure you have:
   ```
 
 ### Step 2.4: Configure Wrangler
-- [ ] Create `wrangler.toml` using Terraform outputs:
+- [X] Create `wrangler.toml.template` with placeholder values (committed to repo)
+- [X] Create `setup-wrangler.sh` script to generate `wrangler.toml` from Terraform outputs
+- [X] Update `.gitignore` to exclude `wrangler.toml` but include `wrangler.toml.template`
+- [X] Run `./setup-wrangler.sh` to generate your local `wrangler.toml` with actual resource IDs
+  
+  **Note**: The actual `wrangler.toml` file is NOT committed to the repository for security reasons. 
+  Resource IDs should not be exposed in public repositories. Always run `./setup-wrangler.sh` 
+  after cloning the repo or when Terraform resources change.
+
+  Template structure (`wrangler.toml.template`):
   ```toml
   name = "zenfast-api"
   main = "src/index.ts"
@@ -147,15 +156,15 @@ Before starting, ensure you have:
   [[d1_databases]]
   binding = "DB"
   database_name = "zenfast"
-  database_id = "<from-terraform-output>"
+  database_id = "<D1_DATABASE_ID>"
 
   [[kv_namespaces]]
   binding = "SESSIONS"
-  id = "<from-terraform-output>"
+  id = "<KV_SESSIONS_ID>"
 
   [[r2_buckets]]
   binding = "STORAGE"
-  bucket_name = "zenfast-storage"
+  bucket_name = "<R2_BUCKET_NAME>"
 
   # Production environment
   [env.production]
@@ -166,15 +175,15 @@ Before starting, ensure you have:
   [[env.production.d1_databases]]
   binding = "DB"
   database_name = "zenfast-prod"
-  database_id = "<from-terraform-output>"
+  database_id = "<D1_DATABASE_ID_PROD>"
 
   [[env.production.kv_namespaces]]
   binding = "SESSIONS"
-  id = "<from-terraform-output>"
+  id = "<KV_SESSIONS_ID_PROD>"
 
   [[env.production.r2_buckets]]
   binding = "STORAGE"
-  bucket_name = "zenfast-storage"
+  bucket_name = "<R2_BUCKET_NAME_PROD>"
   ```
 
 ### Step 2.5: Add NPM Scripts
