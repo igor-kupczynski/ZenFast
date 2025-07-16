@@ -140,11 +140,18 @@ Before starting, ensure you have:
 - [X] Create `wrangler.toml.template` with placeholder values (committed to repo)
 - [X] Create `setup-wrangler.sh` script to generate `wrangler.toml` from Terraform outputs
 - [X] Update `.gitignore` to exclude `wrangler.toml` but include `wrangler.toml.template`
-- [X] Run `./setup-wrangler.sh` to generate your local `wrangler.toml` with actual resource IDs
+- [X] Run `./setup-wrangler.sh` (or `npm run setup`) to generate your local `wrangler.toml` with actual resource IDs
   
   **Note**: The actual `wrangler.toml` file is NOT committed to the repository for security reasons. 
-  Resource IDs should not be exposed in public repositories. Always run `./setup-wrangler.sh` 
+  Resource IDs should not be exposed in public repositories. Always run `npm run setup` 
   after cloning the repo or when Terraform resources change.
+
+  **Local Development**: When you run `npm run dev`, Wrangler automatically uses local mock resources:
+  - D1 database → Local SQLite in `.wrangler/state/v3/d1/`
+  - KV namespace → Local storage in `.wrangler/state/v3/kv/`
+  - R2 bucket → Local storage in `.wrangler/state/v3/r2/`
+  
+  This means you can develop without touching production resources! Use `npm run dev:remote` only when you need to test against real Cloudflare resources.
 
   Template structure (`wrangler.toml.template`):
   ```toml
@@ -187,19 +194,28 @@ Before starting, ensure you have:
   ```
 
 ### Step 2.5: Add NPM Scripts
-- [ ] Update `package.json`:
+- [X] Update `package.json`:
   ```json
   {
     "scripts": {
+      "setup": "./setup-wrangler.sh",
       "dev": "wrangler dev",
-      "deploy": "wrangler deploy",
+      "dev:prod": "wrangler dev --remote",
+      "dev:clean": "rm -rf .wrangler/state && wrangler dev",
+      "deploy:prod": "wrangler deploy --env production",
       "test": "vitest",
       "test:watch": "vitest --watch",
       "lint": "eslint src/",
       "lint:fix": "eslint src/ --fix",
       "format": "prettier --write src/",
       "format:check": "prettier --check src/",
-      "typecheck": "tsc --noEmit"
+      "typecheck": "tsc --noEmit",
+      "db:execute": "wrangler d1 execute DB --local --command",
+      "db:execute:prod": "wrangler d1 execute DB --command",
+      "db:migrations:apply": "wrangler d1 migrations apply DB --local",
+      "db:migrations:apply:prod": "wrangler d1 migrations apply DB",
+      "db:seed": "wrangler d1 execute DB --local --file=./migrations-dev/0001_seed_data.sql",
+      "db:reset": "rm -rf .wrangler/state/v3/d1 && npm run db:migrations:apply && npm run db:seed"
     }
   }
   ```
@@ -311,8 +327,8 @@ Before starting, ensure you have:
   ```
 
 ### Step 3.2: Run Migrations
-- [ ] Apply migrations: `wrangler d1 migrations apply zenfast`
-- [ ] Verify migrations: `wrangler d1 execute zenfast --command "SELECT * FROM sqlite_master"`
+- [ ] Apply migrations: `npm run db:migrations:apply`
+- [ ] Verify migrations: `npm run db:execute "SELECT * FROM sqlite_master"`
 
 ### Step 3.3: Create Initial Users (Manual)
 - [ ] After applying migrations, manually add users via SQL:
@@ -322,7 +338,7 @@ Before starting, ensure you have:
   INSERT INTO users (id, email, name, password_hash) VALUES 
   ('550e8400-e29b-41d4-a716-446655440000', 'test@example.com', 'Test User', '$2b$10$YourBcryptHashHere');
   ```
-- [ ] Use `wrangler d1 execute zenfast --command "INSERT INTO users..."` to add users
+- [ ] Use `npm run db:execute:prod "INSERT INTO users..."` to add users
 - [ ] Generate password hashes using bcrypt (cost factor 10) before inserting
 
 ### Step 3.4: Create Type Definitions
@@ -629,7 +645,7 @@ Before starting, ensure you have:
    - Verify user exists in database
    - Check JWT_SECRET is set correctly
    - Ensure Authorization header format is correct: `Bearer <token>`
-5. **User not found**: Add user manually with password hash: `wrangler d1 execute zenfast --command "INSERT INTO users (id, email, name, password_hash) VALUES ('uuid-here', 'user@example.com', 'User Name', '$2b$10$...')"`
+5. **User not found**: Add user manually with password hash: `npm run db:execute:prod "INSERT INTO users (id, email, name, password_hash) VALUES ('uuid-here', 'user@example.com', 'User Name', '$2b$10$...')"`
 6. **D1 migration errors**: Check SQL syntax and foreign key constraints
 7. **Wrangler deployment fails**: Verify all environment variables are set
 
@@ -639,7 +655,7 @@ Before starting, ensure you have:
 wrangler tail
 
 # Execute D1 queries
-wrangler d1 execute zenfast --command "SELECT * FROM users"
+npm run db:execute "SELECT * FROM users"
 
 # List KV keys
 wrangler kv:key list --binding=SESSIONS

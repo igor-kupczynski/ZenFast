@@ -294,14 +294,20 @@ await env.ANALYTICS.writeDataPoint({
 # Install dependencies
 npm install
 
-# Run locally with miniflare
+# Set up wrangler config from Terraform
+npm run setup
+
+# Initialize local database with test data
+npm run db:reset:local
+
+# Run locally (uses mock resources)
 npm run dev
 
 # Run tests
 npm test
 
-# Deploy to staging
-npm run deploy:staging
+# Deploy to production
+npm run deploy:prod
 ```
 
 ### CI/CD Pipeline

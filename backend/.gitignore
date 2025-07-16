@@ -17,6 +17,10 @@ build/
 wrangler.toml
 !wrangler.toml.template
 
+# Dev migrations are kept in the repo for developer convenience
+# They contain test data and should NEVER be run in production
+# See migrations-dev/README.md for usage
+
 # Wrangler
 .wrangler/
 
