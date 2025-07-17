@@ -308,10 +308,10 @@ Before starting, ensure you have:
   - Prevent wrangler.toml commits
 
 ### Step 2.7: Verify Setup
-- [ ] Run `terraform/tf.sh output -json > terraform-outputs.json` to capture resource IDs
-- [ ] Verify database_id and kv_namespace_id are populated in `wrangler.toml`
-- [ ] Run `npm run typecheck` to ensure TypeScript is properly configured
-- [ ] Create `src/index.ts` with minimal content:
+- [X] Run `terraform/tf.sh output -json > terraform-outputs.json` to capture resource IDs
+- [X] Verify database_id and kv_namespace_id are populated in `wrangler.toml`
+- [X] Run `npm run typecheck` to ensure TypeScript is properly configured
+- [X] Create `src/index.ts` with minimal content:
   ```typescript
   export default {
     async fetch(): Promise<Response> {
@@ -319,8 +319,8 @@ Before starting, ensure you have:
     },
   };
   ```
-- [ ] Run `npm run dev` and verify the worker responds at `http://localhost:8787`
-- [ ] Run `npm run lint` and `npm run format:check` to verify code quality tools work
+- [X] Run `npm run dev` and verify the worker responds at `http://localhost:8787`
+- [X] Run `npm run lint` and `npm run format:check` to verify code quality tools work
 
 **Checkpoint**: Project is configured with TypeScript, Wrangler, and code quality tools verified.
 
