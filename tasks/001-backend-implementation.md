@@ -533,94 +533,115 @@ Before starting, ensure you have:
 ## Phase 5: Simple Authentication (Manual Users)
 
 ### Step 5.1: Create User Repository
-- [ ] Create `src/repositories/userRepository.ts`:
-  ```typescript
-  export class UserRepository {
-    constructor(private db: D1Database) {}
-    
-    async findByEmail(email: string): Promise<User | null> {
-      const result = await this.db
-        .prepare('SELECT * FROM users WHERE email = ?')
-        .bind(email)
-        .first();
-      return result || null;
-    }
-    
-    async findById(id: string): Promise<User | null> {
-      const result = await this.db
-        .prepare('SELECT * FROM users WHERE id = ?')
-        .bind(id)
-        .first();
-      return result || null;
-    }
-  }
-  ```
+- [X] Create `src/repositories/userRepository.ts` *(Already completed - includes findByEmail, findById, create, update, delete methods)*
 
 ### Step 5.2: Implement Login with Password
-- [ ] Install bcrypt for password verification: `npm install bcryptjs @types/bcryptjs`
-- [ ] Create `src/routes/auth.ts` with login endpoint:
-  - POST `/api/v1/auth/login` - Login with email and password
-    - Look up user by email
-    - Verify password hash using bcrypt
-    - If valid, generate JWT
-    - Return JWT and user info
-    - If invalid, return 401
-- [ ] Example login handler:
+- [X] Install bcrypt for password verification *(Already installed: bcryptjs@3.0.2 and @types/bcryptjs@2.4.6)*
+- [ ] Update `src/services/authService.ts` to add password verification:
+  - Import bcryptjs
+  - Replace TODO comment with actual bcrypt.compare() implementation
+  - Update authenticateUser method to validate passwords
+- [ ] Create `src/schemas/` directory for validation schemas
+- [ ] Create `src/schemas/auth.ts` with Zod schemas:
   ```typescript
-  import bcrypt from 'bcryptjs';
+  import { z } from 'zod';
   
-  const user = await userRepository.findByEmail(email);
-  if (!user) return c.json({ error: 'Invalid credentials' }, 401);
+  export const loginSchema = z.object({
+    email: z.string().email(),
+    password: z.string().min(1),
+  });
   
-  const validPassword = await bcrypt.compare(password, user.password_hash);
-  if (!validPassword) return c.json({ error: 'Invalid credentials' }, 401);
+  export const loginResponseSchema = z.object({
+    token: z.string(),
+    user: z.object({
+      id: z.string(),
+      email: z.string().email(),
+      name: z.string(),
+    }),
+  });
+  ```
+- [ ] Create `src/routes/` directory
+- [ ] Create `src/routes/auth.ts` with login endpoint:
+  ```typescript
+  import { Hono } from 'hono';
+  import { zValidator } from '@hono/zod-validator';
+  import { loginSchema } from '../schemas/auth';
+  import { AuthService } from '../services/authService';
+  import { UserRepository } from '../repositories/userRepository';
+  import type { Env } from '../index';
+  
+  const auth = new Hono<{ Bindings: Env }>();
+  
+  auth.post('/login', zValidator('json', loginSchema), async (c) => {
+    const { email, password } = c.req.valid('json');
+    
+    const userRepository = new UserRepository(c.env.DB);
+    const authService = new AuthService(userRepository, c.env.JWT_SECRET);
+    
+    const result = await authService.authenticateUser(email, password);
+    
+    if (!result) {
+      return c.json({ error: 'Invalid credentials' }, 401);
+    }
+    
+    return c.json({
+      token: result.token,
+      user: {
+        id: result.user.id,
+        email: result.user.email,
+        name: result.user.name,
+      },
+    });
+  });
+  
+  export default auth;
   ```
 
 ### Step 5.3: Implement JWT Management
-- [ ] Create `src/utils/jwt.ts`:
-  ```typescript
-  import { SignJWT, jwtVerify } from 'jose';
-  
-  export async function createJWT(user: User, secret: string): Promise<string> {
-    const jwt = await new SignJWT({ 
-      sub: user.id,
-      email: user.email,
-      name: user.name 
-    })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setIssuedAt()
-      .setExpirationTime('24h')
-      .sign(new TextEncoder().encode(secret));
-    return jwt;
-  }
-  
-  export async function verifyJWT(token: string, secret: string) {
-    const { payload } = await jwtVerify(
-      token,
-      new TextEncoder().encode(secret)
-    );
-    return payload;
-  }
-  ```
+- [X] JWT management already implemented in `src/services/authService.ts`:
+  - createJWT() method creates tokens with user info
+  - verifyJWT() method validates and decodes tokens
+  - Uses jose library for JWT operations
+  - **Note**: Implementation is in authService.ts rather than separate utils/jwt.ts (better design for encapsulation)
 
 ### Step 5.4: Create Auth Middleware
+- [ ] Create `src/middleware/` directory
 - [ ] Create `src/middleware/auth.ts`:
   ```typescript
-  export async function authenticate(c: Context, next: Next) {
+  import { Context, Next } from 'hono';
+  import { AuthService } from '../services/authService';
+  import { UserRepository } from '../repositories/userRepository';
+  import type { Env } from '../index';
+  
+  export async function authenticate(c: Context<{ Bindings: Env }>, next: Next) {
     const token = c.req.header('Authorization')?.replace('Bearer ', '');
+    
     if (!token) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
     
     try {
-      const payload = await verifyJWT(token, c.env.JWT_SECRET);
+      const userRepository = new UserRepository(c.env.DB);
+      const authService = new AuthService(userRepository, c.env.JWT_SECRET);
+      
+      const payload = await authService.verifyJWT(token);
+      
+      // Set user info in context for downstream handlers
       c.set('userId', payload.sub);
       c.set('user', payload);
+      
       await next();
     } catch {
       return c.json({ error: 'Invalid token' }, 401);
     }
   }
+  ```
+- [ ] Wire up auth routes in `src/index.ts`:
+  ```typescript
+  import authRoutes from './routes/auth';
+  
+  // After existing middleware setup
+  app.route('/api/v1/auth', authRoutes);
   ```
 
 ### Step 5.5: Test Authentication
