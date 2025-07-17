@@ -215,7 +215,8 @@ Before starting, ensure you have:
       "db:migrations:apply": "wrangler d1 migrations apply DB --local",
       "db:migrations:apply:prod": "wrangler d1 migrations apply DB",
       "db:seed": "wrangler d1 execute DB --local --file=./migrations-dev/0001_seed_data.sql",
-      "db:reset": "rm -rf .wrangler/state/v3/d1 && npm run db:migrations:apply && npm run db:seed"
+      "db:reset": "rm -rf .wrangler/state/v3/d1 && npm run db:migrations:apply && npm run db:seed",
+      "hash-password": "node scripts/hash-password.js"
     }
   }
   ```
@@ -369,18 +370,87 @@ Before starting, ensure you have:
 - [ ] Apply migrations: `npm run db:migrations:apply`
 - [ ] Verify migrations: `npm run db:execute "SELECT * FROM sqlite_master"`
 
-### Step 3.3: Create Initial Users (Manual)
-- [ ] After applying migrations, manually add users via SQL:
-  ```sql
-  -- Example: Add a test user with bcrypt password hash
-  -- Password: "testpassword123" (use bcrypt with cost 10)
-  INSERT INTO users (id, email, name, password_hash) VALUES 
-  ('550e8400-e29b-41d4-a716-446655440000', 'test@example.com', 'Test User', '$2b$10$YourBcryptHashHere');
-  ```
-- [ ] Use `npm run db:execute:prod "INSERT INTO users..."` to add users
-- [ ] Generate password hashes using bcrypt (cost factor 10) before inserting
+### Step 3.3: Create Password Hash Utility
+- [ ] Create `scripts/hash-password.js`:
+  ```javascript
+  import bcrypt from 'bcryptjs';
+  import { v4 as uuidv4 } from 'uuid';
+  import readline from 'readline';
 
-### Step 3.4: Create Type Definitions
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    terminal: true
+  });
+
+  function question(query) {
+    return new Promise(resolve => rl.question(query, resolve));
+  }
+
+  function questionPassword(query) {
+    return new Promise(resolve => {
+      rl.question(query, (password) => {
+        // Clear the line after password input
+        console.log();
+        resolve(password);
+      });
+      // Hide password input
+      rl._writeToOutput = function _writeToOutput(stringToWrite) {
+        if (rl.line.length === 0) {
+          rl.output.write(stringToWrite);
+        } else {
+          rl.output.write('*');
+        }
+      };
+    });
+  }
+
+  async function main() {
+    try {
+      const email = await question('Email: ');
+      const name = await question('Name: ');
+      const password = await questionPassword('Password: ');
+      
+      const userId = uuidv4();
+      const hash = await bcrypt.hash(password, 10);
+      
+      console.log('\n--- SQL Command for Production ---');
+      console.log(`INSERT INTO users (id, email, name, password_hash) VALUES ('${userId}', '${email}', '${name}', '${hash}');`);
+      console.log('\n--- Execute with ---');
+      console.log(`npm run db:execute:prod "INSERT INTO users (id, email, name, password_hash) VALUES ('${userId}', '${email}', '${name}', '${hash}');"`)
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      rl.close();
+    }
+  }
+
+  main();
+  ```
+- [ ] Add script to package.json: `"hash-password": "node scripts/hash-password.js"`
+- [ ] Use this script to generate SQL for production users: `npm run hash-password`
+
+### Step 3.4: Create Development Seed Data
+- [ ] Create `migrations-dev/` directory for development-only data
+- [ ] Create `migrations-dev/0001_seed_data.sql`:
+  ```sql
+  -- Development test users with known passwords
+  -- Password for all test users: "testpass123"
+  INSERT INTO users (id, email, name, password_hash) VALUES 
+  ('550e8400-e29b-41d4-a716-446655440001', 'alice@test.local', 'Alice Test', '$2b$10$5F.2Z8Qk1j3VH3s1K9JYaOWYqzT4R5pXH8I0dGxqB8ycVxVxG0Eny'),
+  ('550e8400-e29b-41d4-a716-446655440002', 'bob@test.local', 'Bob Test', '$2b$10$5F.2Z8Qk1j3VH3s1K9JYaOWYqzT4R5pXH8I0dGxqB8ycVxVxG0Eny'),
+  ('550e8400-e29b-41d4-a716-446655440003', 'charlie@test.local', 'Charlie Test', '$2b$10$5F.2Z8Qk1j3VH3s1K9JYaOWYqzT4R5pXH8I0dGxqB8ycVxVxG0Eny');
+
+  -- Sample fasts for Alice
+  INSERT INTO fasts (id, user_id, started_at, ended_at) VALUES
+  ('660e8400-e29b-41d4-a716-446655440101', '550e8400-e29b-41d4-a716-446655440001', datetime('now', '-7 days', 'start of day', '+6 hours'), datetime('now', '-7 days', 'start of day', '+22 hours')),
+  ('660e8400-e29b-41d4-a716-446655440102', '550e8400-e29b-41d4-a716-446655440001', datetime('now', '-5 days', 'start of day', '+6 hours'), datetime('now', '-5 days', 'start of day', '+20 hours')),
+  ('660e8400-e29b-41d4-a716-446655440103', '550e8400-e29b-41d4-a716-446655440001', datetime('now', '-2 days', 'start of day', '+6 hours'), datetime('now', '-2 days', 'start of day', '+22 hours')),
+  ('660e8400-e29b-41d4-a716-446655440104', '550e8400-e29b-41d4-a716-446655440001', datetime('now', 'start of day', '+6 hours'), NULL); -- Current fast
+  ```
+- [ ] This seed data is ONLY for local development, never for production
+
+### Step 3.5: Create Type Definitions
 - [ ] Create `src/types/` directory
 - [ ] Create `src/types/models.ts`:
   ```typescript
@@ -408,8 +478,8 @@ Before starting, ensure you have:
 
 ## Phase 4: Core Application Structure
 
-### Step 4.1: Create Worker Entry Point
-- [ ] Create `src/index.ts`:
+### Step 4.1: Enhance Worker Entry Point
+- [ ] Update the existing `src/index.ts` (created in Step 2.7) to full application structure:
   ```typescript
   import { Hono } from 'hono';
   import { cors } from 'hono/cors';
@@ -431,8 +501,12 @@ Before starting, ensure you have:
 
   // Health check
   app.get('/health', (c) => {
-    return c.json({ status: 'ok' });
+    return c.json({ status: 'ok', environment: 'local' });
   });
+
+  // API routes will be added here
+  // app.route('/api/v1/auth', authRoutes);
+  // app.route('/api/v1/fasts', fastRoutes);
 
   export default app;
   ```
@@ -550,10 +624,21 @@ Before starting, ensure you have:
   ```
 
 ### Step 5.5: Test Authentication
-- [ ] Manually add test users to database
-- [ ] Test login endpoint with curl
-- [ ] Verify JWT generation
-- [ ] Test protected endpoints with JWT
+- [ ] For local development: Use seeded test users (email: `alice@test.local`, password: `testpass123`)
+- [ ] For production: Use `npm run hash-password` to generate user SQL, then add manually
+- [ ] Test login endpoint with curl:
+  ```bash
+  # Local test
+  curl -X POST http://localhost:8787/api/v1/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"email": "alice@test.local", "password": "testpass123"}'
+  ```
+- [ ] Verify JWT generation and decode payload
+- [ ] Test protected endpoints with JWT:
+  ```bash
+  curl http://localhost:8787/api/v1/fasts \
+    -H "Authorization: Bearer <your-jwt-token>"
+  ```
 
 **Checkpoint**: Basic authentication is working with manually created users.
 
@@ -602,25 +687,33 @@ Before starting, ensure you have:
 - [ ] Integration tests for API endpoints
 - [ ] Edge case and error handling tests
 
-### Step 7.3: Add Linting and Formatting
-- [ ] Configure ESLint rules
-- [ ] Configure Prettier
-- [ ] Add pre-commit hooks
-- [ ] Fix all linting issues
+### Step 7.3: Ensure Code Quality
+- [ ] Run full linting check: `npm run lint`
+- [ ] Run format check: `npm run format:check`
+- [ ] Fix any linting or formatting issues found
+- [ ] Run type check: `npm run typecheck`
+- [ ] Ensure all tests pass: `npm test`
 
 **Checkpoint**: Comprehensive test suite is in place with >80% coverage.
 
 ## Phase 8: Deployment and CI/CD
 
-### Step 8.1: Set Up GitHub Actions
-- [ ] Create `.github/workflows/test.yml` for testing
-- [ ] Create `.github/workflows/deploy.yml` for production deployment
-- [ ] Add secret management for deployments
+### Step 8.1: Enhance GitHub Actions for Deployment
+- [ ] Update `.github/workflows/ci.yml` to run on main branch only
+- [ ] Create `.github/workflows/deploy.yml` for production deployment:
+  - Triggered on push to main after CI passes
+  - Uses GitHub secrets for Cloudflare API token
+  - Deploys to production environment
+- [ ] Add required secrets to GitHub repository:
+  - `CLOUDFLARE_API_TOKEN`
+  - `CLOUDFLARE_ACCOUNT_ID`
 
-### Step 8.2: Configure Local Testing
+### Step 8.2: Production Testing Checklist
 - [ ] Test all endpoints locally with `npm run dev`
-- [ ] Verify Apple Sign In with localhost
-- [ ] Check logs with `wrangler tail`
+- [ ] Test authentication flow with production-like users
+- [ ] Verify all CRUD operations for fasts
+- [ ] Check error handling and validation
+- [ ] Monitor logs with `wrangler tail`
 
 ### Step 8.3: Production Deployment
 - [ ] Add production secrets to Wrangler
@@ -657,7 +750,7 @@ Before starting, ensure you have:
 ### Completion Checklist
 - [ ] All tests passing
 - [ ] Production deployed
-- [ ] Apple Sign In working end-to-end
+- [ ] Authentication system working with manual users
 - [ ] All API endpoints functional
 - [ ] Monitoring and logging operational
 - [ ] Documentation complete
@@ -684,7 +777,7 @@ Before starting, ensure you have:
    - Verify user exists in database
    - Check JWT_SECRET is set correctly
    - Ensure Authorization header format is correct: `Bearer <token>`
-5. **User not found**: Add user manually with password hash: `npm run db:execute:prod "INSERT INTO users (id, email, name, password_hash) VALUES ('uuid-here', 'user@example.com', 'User Name', '$2b$10$...')"`
+5. **User not found**: Use `npm run hash-password` to generate user SQL, then add with: `npm run db:execute:prod "INSERT INTO users..."`
 6. **D1 migration errors**: Check SQL syntax and foreign key constraints
 7. **Wrangler deployment fails**: Verify all environment variables are set
 
