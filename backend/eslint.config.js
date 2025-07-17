@@ -19,6 +19,11 @@ export default [
         Response: 'readonly',
         Request: 'readonly',
         fetch: 'readonly',
+        D1Database: 'readonly',
+        KVNamespace: 'readonly',
+        R2Bucket: 'readonly',
+        TextEncoder: 'readonly',
+        TextDecoder: 'readonly',
       },
     },
     plugins: {
