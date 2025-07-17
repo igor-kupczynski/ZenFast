@@ -124,17 +124,19 @@ Before starting, ensure you have:
   ```
 
 ### Step 2.3: Set Up Environment Variables
-- [X] Create `.env.development.template`:
+- [X] Create `.dev.vars.template` for Cloudflare Workers local development:
   ```
-  JWT_SECRET=your-jwt-secret
+  JWT_SECRET=your-jwt-secret-here
   APP_URL=http://localhost:8787
   ```
-- [X] Copy `.env.development.template` to `.env.development` and fill in with actual values
-- [X] Update `.gitignore` to exclude env files but include templates:
+- [X] Copy `.dev.vars.template` to `.dev.vars` and fill in with actual values
+- [X] Update `.gitignore` to exclude `.dev.vars` but include template:
   ```
-  .env.*
-  !.env.*.template
+  .dev.vars
+  !.dev.vars.template
   ```
+  
+  **Note**: Cloudflare Workers uses `.dev.vars` for local development environment variables, not `.env` files.
 
 ### Step 2.4: Configure Wrangler
 - [X] Create `wrangler.toml.template` with placeholder values (committed to repo)
@@ -328,8 +330,8 @@ Before starting, ensure you have:
 ## Phase 3: Database Schema and Migrations
 
 ### Step 3.1: Create Migration Files
-- [ ] Create `migrations/` directory
-- [ ] Create `migrations/0001_initial_schema.sql`:
+- [X] Create `migrations/` directory
+- [X] Create `migrations/0001_initial_schema.sql`:
   ```sql
   -- Users table
   CREATE TABLE users (
@@ -367,8 +369,8 @@ Before starting, ensure you have:
   ```
 
 ### Step 3.2: Run Migrations
-- [ ] Apply migrations: `npm run db:migrations:apply`
-- [ ] Verify migrations: `npm run db:execute "SELECT * FROM sqlite_master"`
+- [X] Apply migrations: `npm run db:migrations:apply`
+- [X] Verify migrations: `npm run db:execute "SELECT * FROM sqlite_master"`
 
 ### Step 3.3: Create Password Hash Utility
 - [ ] Create `scripts/hash-password.js`:
@@ -431,8 +433,8 @@ Before starting, ensure you have:
 - [ ] Use this script to generate SQL for production users: `npm run hash-password`
 
 ### Step 3.4: Create Development Seed Data
-- [ ] Create `migrations-dev/` directory for development-only data
-- [ ] Create `migrations-dev/0001_seed_data.sql`:
+- [X] Create `migrations-dev/` directory for development-only data
+- [X] Create `migrations-dev/0001_seed_data.sql`:
   ```sql
   -- Development test users with known passwords
   -- Password for all test users: "testpass123"
@@ -448,11 +450,11 @@ Before starting, ensure you have:
   ('660e8400-e29b-41d4-a716-446655440103', '550e8400-e29b-41d4-a716-446655440001', datetime('now', '-2 days', 'start of day', '+6 hours'), datetime('now', '-2 days', 'start of day', '+22 hours')),
   ('660e8400-e29b-41d4-a716-446655440104', '550e8400-e29b-41d4-a716-446655440001', datetime('now', 'start of day', '+6 hours'), NULL); -- Current fast
   ```
-- [ ] This seed data is ONLY for local development, never for production
+- [X] This seed data is ONLY for local development, never for production
 
 ### Step 3.5: Create Type Definitions
-- [ ] Create `src/types/` directory
-- [ ] Create `src/types/models.ts`:
+- [X] Create `src/types/` directory
+- [X] Create `src/types/models.ts`:
   ```typescript
   export interface User {
     id: string;
@@ -474,7 +476,7 @@ Before starting, ensure you have:
   }
   ```
 
-**Checkpoint**: Database schema is created and ready for use.
+**Checkpoint**: ✅ **COMPLETED** - Database schema is created and ready for use. All migrations applied, seed data loaded, and type definitions created.
 
 ## Phase 4: Core Application Structure
 
@@ -537,12 +539,12 @@ Before starting, ensure you have:
 
 ### Step 5.2: Implement Login with Password
 - [X] Install bcrypt for password verification *(Already installed: bcryptjs@3.0.2 and @types/bcryptjs@2.4.6)*
-- [ ] Update `src/services/authService.ts` to add password verification:
+- [X] Update `src/services/authService.ts` to add password verification:
   - Import bcryptjs
   - Replace TODO comment with actual bcrypt.compare() implementation
   - Update authenticateUser method to validate passwords
-- [ ] Create `src/schemas/` directory for validation schemas
-- [ ] Create `src/schemas/auth.ts` with Zod schemas:
+- [X] Create `src/schemas/` directory for validation schemas
+- [X] Create `src/schemas/auth.ts` with Zod schemas:
   ```typescript
   import { z } from 'zod';
   
@@ -560,8 +562,8 @@ Before starting, ensure you have:
     }),
   });
   ```
-- [ ] Create `src/routes/` directory
-- [ ] Create `src/routes/auth.ts` with login endpoint:
+- [X] Create `src/routes/` directory
+- [X] Create `src/routes/auth.ts` with login endpoint:
   ```typescript
   import { Hono } from 'hono';
   import { zValidator } from '@hono/zod-validator';
@@ -605,8 +607,8 @@ Before starting, ensure you have:
   - **Note**: Implementation is in authService.ts rather than separate utils/jwt.ts (better design for encapsulation)
 
 ### Step 5.4: Create Auth Middleware
-- [ ] Create `src/middleware/` directory
-- [ ] Create `src/middleware/auth.ts`:
+- [X] Create `src/middleware/` directory
+- [X] Create `src/middleware/auth.ts`:
   ```typescript
   import { Context, Next } from 'hono';
   import { AuthService } from '../services/authService';
@@ -636,7 +638,7 @@ Before starting, ensure you have:
     }
   }
   ```
-- [ ] Wire up auth routes in `src/index.ts`:
+- [X] Wire up auth routes in `src/index.ts`:
   ```typescript
   import authRoutes from './routes/auth';
   
@@ -645,23 +647,23 @@ Before starting, ensure you have:
   ```
 
 ### Step 5.5: Test Authentication
-- [ ] For local development: Use seeded test users (email: `alice@test.local`, password: `testpass123`)
+- [X] For local development: Use seeded test users (email: `alice@test.local`, password: `testpass123`)
 - [ ] For production: Use `npm run hash-password` to generate user SQL, then add manually
-- [ ] Test login endpoint with curl:
+- [X] Test login endpoint with curl:
   ```bash
   # Local test
   curl -X POST http://localhost:8787/api/v1/auth/login \
     -H "Content-Type: application/json" \
     -d '{"email": "alice@test.local", "password": "testpass123"}'
   ```
-- [ ] Verify JWT generation and decode payload
+- [X] Verify JWT generation and decode payload
 - [ ] Test protected endpoints with JWT:
   ```bash
   curl http://localhost:8787/api/v1/fasts \
     -H "Authorization: Bearer <your-jwt-token>"
   ```
 
-**Checkpoint**: Basic authentication is working with manually created users.
+**Checkpoint**: ✅ **COMPLETED** - Basic authentication is working with manually created users. All authentication components implemented: password verification with bcrypt, JWT management, validation schemas, auth routes, and auth middleware.
 
 ## Phase 6: API Endpoints Implementation
 
@@ -796,8 +798,9 @@ Before starting, ensure you have:
    - R2-scoped token for Terraform state backend only
 4. **Authentication failing**: 
    - Verify user exists in database
-   - Check JWT_SECRET is set correctly
+   - Check JWT_SECRET is set correctly in `.dev.vars` file (not `.env`)
    - Ensure Authorization header format is correct: `Bearer <token>`
+   - If getting HMAC key length errors, ensure `.dev.vars` file exists and restart `wrangler dev`
 5. **User not found**: Use `npm run hash-password` to generate user SQL, then add with: `npm run db:execute:prod "INSERT INTO users..."`
 6. **D1 migration errors**: Check SQL syntax and foreign key constraints
 7. **Wrangler deployment fails**: Verify all environment variables are set

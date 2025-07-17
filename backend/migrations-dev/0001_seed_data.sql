@@ -7,9 +7,9 @@
 -- Test users with bcrypt hashed passwords (cost factor 10)
 INSERT INTO users (id, email, name, password_hash) VALUES 
 -- Password: testpass123
-('550e8400-e29b-41d4-a716-446655440001', 'alice@example.com', 'Alice Johnson', '$2b$10$00OA8JHkboHtJVG8ydgcgedehvf6qrPYSCXKS7JEck/i9696kVAmK'),
-('550e8400-e29b-41d4-a716-446655440002', 'bob@example.com', 'Bob Smith', '$2b$10$00OA8JHkboHtJVG8ydgcgedehvf6qrPYSCXKS7JEck/i9696kVAmK'),
-('550e8400-e29b-41d4-a716-446655440003', 'charlie@example.com', 'Charlie Brown', '$2b$10$00OA8JHkboHtJVG8ydgcgedehvf6qrPYSCXKS7JEck/i9696kVAmK');
+('550e8400-e29b-41d4-a716-446655440001', 'alice@test.local', 'Alice Test', '$2b$10$00OA8JHkboHtJVG8ydgcgedehvf6qrPYSCXKS7JEck/i9696kVAmK'),
+('550e8400-e29b-41d4-a716-446655440002', 'bob@test.local', 'Bob Test', '$2b$10$00OA8JHkboHtJVG8ydgcgedehvf6qrPYSCXKS7JEck/i9696kVAmK'),
+('550e8400-e29b-41d4-a716-446655440003', 'charlie@test.local', 'Charlie Test', '$2b$10$00OA8JHkboHtJVG8ydgcgedehvf6qrPYSCXKS7JEck/i9696kVAmK');
 
 -- Sample fasts for Alice (user 1)
 -- Completed fast from yesterday

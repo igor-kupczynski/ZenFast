@@ -1,4 +1,5 @@
 import { SignJWT, jwtVerify } from 'jose';
+import bcrypt from 'bcryptjs';
 import { UserRepository } from '../repositories/userRepository';
 import { User } from '../types/models';
 
@@ -37,16 +38,17 @@ export class AuthService {
 
   async authenticateUser(
     email: string,
-    _password: string
+    password: string
   ): Promise<{ user: User; token: string } | null> {
     const user = await this.userRepository.findByEmail(email);
     if (!user) {
       return null;
     }
 
-    // Password verification will be implemented when we add bcrypt
-    // For now, we'll just return the user and token
-    // TODO: Add bcrypt.compare(password, user.password_hash)
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    if (!isValidPassword) {
+      return null;
+    }
 
     const token = await this.createJWT(user);
     return { user, token };

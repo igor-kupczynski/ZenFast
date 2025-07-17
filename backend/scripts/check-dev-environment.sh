@@ -12,14 +12,14 @@ if [[ "${WRANGLER_ENV:-}" == "production" ]]; then
 fi
 
 # Check if --remote flag is being used
-if [[ "${@}" == *"--remote"* ]]; then
+if [[ "${@:-}" == *"--remote"* ]]; then
     echo "❌ ERROR: Cannot run dev-only commands with --remote flag!"
     echo "   This would affect real Cloudflare resources"
     exit 1
 fi
 
 # Check if --env production is being used
-if [[ "${@}" == *"--env production"* ]]; then
+if [[ "${@:-}" == *"--env production"* ]]; then
     echo "❌ ERROR: Cannot run dev-only commands with --env production!"
     exit 1
 fi

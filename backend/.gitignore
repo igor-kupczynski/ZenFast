@@ -9,9 +9,7 @@ dist/
 build/
 
 # Environment files
-.env
-.env.*
-!.env.*.template
+# Using .dev.vars for Cloudflare Workers local development
 
 # Wrangler config (contains sensitive IDs)
 wrangler.toml
@@ -23,6 +21,8 @@ wrangler.toml
 
 # Wrangler
 .wrangler/
+.dev.vars
+!.dev.vars.template
 
 # TypeScript
 *.tsbuildinfo
