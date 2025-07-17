@@ -221,28 +221,46 @@ Before starting, ensure you have:
   ```
 
 ### Step 2.6: Configure Code Quality Tools
-- [ ] Create `.eslintrc.json`:
-  ```json
-  {
-    "root": true,
-    "parser": "@typescript-eslint/parser",
-    "plugins": ["@typescript-eslint"],
-    "extends": [
-      "eslint:recommended",
-      "plugin:@typescript-eslint/recommended",
-      "prettier"
-    ],
-    "env": {
-      "node": true,
-      "es2022": true
+- [X] Create `eslint.config.js` (using new flat config format):
+  ```javascript
+  import js from '@eslint/js';
+  import typescript from '@typescript-eslint/eslint-plugin';
+  import typescriptParser from '@typescript-eslint/parser';
+  import prettier from 'eslint-config-prettier';
+
+  export default [
+    js.configs.recommended,
+    prettier,
+    {
+      files: ['**/*.ts', '**/*.tsx'],
+      languageOptions: {
+        parser: typescriptParser,
+        ecmaVersion: 2022,
+        sourceType: 'module',
+        globals: {
+          console: 'readonly',
+          process: 'readonly',
+          Buffer: 'readonly',
+          Response: 'readonly',
+          Request: 'readonly',
+          fetch: 'readonly',
+        },
+      },
+      plugins: {
+        '@typescript-eslint': typescript,
+      },
+      rules: {
+        ...typescript.configs.recommended.rules,
+        '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+        '@typescript-eslint/explicit-module-boundary-types': 'off',
+      },
     },
-    "rules": {
-      "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-      "@typescript-eslint/explicit-module-boundary-types": "off"
-    }
-  }
+    {
+      ignores: ['node_modules/', 'dist/', 'build/', '.wrangler/', 'coverage/'],
+    },
+  ];
   ```
-- [ ] Create `.prettierrc`:
+- [X] Create `.prettierrc`:
   ```json
   {
     "semi": true,
@@ -252,7 +270,9 @@ Before starting, ensure you have:
     "tabWidth": 2
   }
   ```
-- [ ] Create `vitest.config.ts`:
+- [X] Create `.prettierignore` to exclude generated files
+- [X] Add `"type": "module"` to package.json for ES module support
+- [X] Create `vitest.config.ts`:
   ```typescript
   import { defineConfig } from 'vitest/config';
 
@@ -267,6 +287,25 @@ Before starting, ensure you have:
     }
   });
   ```
+
+### Step 2.6.1: Set Up GitHub Actions CI
+- [X] Create `.github/workflows/ci.yml`:
+  - Runs on every push to main and on PRs
+  - Backend checks: TypeScript, ESLint, Prettier, tests
+  - Security check: Ensures wrangler.toml isn't committed
+  - Terraform checks: Format validation and syntax check
+  - Fast fail to save CI minutes
+
+### Step 2.6.2: Set Up Pre-commit Hooks (Optional)
+- [X] Create `scripts/setup-git-hooks.sh` for local enforcement
+- [X] Add `npm run setup:hooks` command
+- [X] Run `npm run setup:hooks` to install the hooks locally
+  
+  Pre-commit hooks will check:
+  - TypeScript types
+  - ESLint rules
+  - Code formatting
+  - Prevent wrangler.toml commits
 
 ### Step 2.7: Verify Setup
 - [ ] Run `terraform/tf.sh output -json > terraform-outputs.json` to capture resource IDs

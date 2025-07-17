@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "setup": "./setup-wrangler.sh",
+    "setup:hooks": "./scripts/setup-git-hooks.sh",
     "dev": "wrangler dev",
     "dev:prod": "wrangler dev --remote",
     "dev:clean": "rm -rf .wrangler/state && wrangler dev",
@@ -37,6 +39,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250715.0",
+    "@eslint/js": "^9.31.0",
     "@types/node": "^24.0.14",
     "@typescript-eslint/eslint-plugin": "^8.37.0",
     "@typescript-eslint/parser": "^8.37.0",
