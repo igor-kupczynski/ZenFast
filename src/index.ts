@@ -1,6 +1,6 @@
-import { Env } from './types.js';
-import { validateWebhookSecret, parseWebhookUpdate, shouldProcessMessage, extractChatId, extractMessageText } from './webhook.js';
-import { createTelegramApi } from './telegram.js';
+import { Env } from './types';
+import { validateWebhookSecret, parseWebhookUpdate, shouldProcessMessage, extractChatId, extractMessageText } from './webhook';
+import { createTelegramApi } from './telegram';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -56,5 +56,5 @@ export default {
 };
 
 // Export for local development and testing
-export { validateWebhookSecret, parseWebhookUpdate, shouldProcessMessage } from './webhook.js';
-export { createTelegramApi } from './telegram.js';
+export { validateWebhookSecret, parseWebhookUpdate, shouldProcessMessage } from './webhook';
+export { createTelegramApi } from './telegram';

@@ -1,4 +1,4 @@
-import { Update, Env } from './types.js';
+import { Update, Env } from './types';
 
 export function validateWebhookSecret(request: Request, env: Env): boolean {
   const secret = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
