@@ -93,18 +93,32 @@ wrangler secret put BOT_TOKEN
 wrangler secret put WEBHOOK_SECRET
 ```
 
-### 5. Deploy and Configure Webhook
+### 5. Deploy Worker
 
 ```bash
-# Deploy and setup webhook
-npm run setup
+# Deploy the worker to Cloudflare
+wrangler deploy
 ```
 
-This command will:
-1. Deploy the worker to Cloudflare
-2. Configure the Telegram webhook
+### 6. Configure Telegram Webhook
 
-### 6. Test Your Bot
+Set the Telegram webhook to point to your deployed worker:
+
+```bash
+# Set the webhook (replace variables with actual values)
+curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d "{\"url\": \"${WORKER_ROUTE}/webhook\", \"secret_token\": \"${WEBHOOK_SECRET}\"}"
+```
+
+Verify the webhook was set correctly:
+
+```bash
+# Check webhook status
+curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
+```
+
+### 7. Test Your Bot
 
 Send a message to your bot on Telegram. It should respond with:
 ```
@@ -193,16 +207,13 @@ You said: [original message]
 | `npm test` | Run unit tests |
 | `npm run build` | Compile TypeScript |
 | `npm run deploy` | Deploy to Cloudflare Workers |
-| `npm run setup:webhook` | Configure Telegram webhook |
-| `npm run setup` | Deploy worker and configure webhook |
-| `npm run verify` | Verify deployment status |
 
 ## Troubleshooting
 
 ### Common Issues
 
 **Bot not responding:**
-1. Check webhook status: `npm run verify`
+1. Check webhook status: `curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"`
 2. Verify environment variables in `.env`
 3. Check Cloudflare Workers logs: `wrangler tail`
 
@@ -216,9 +227,32 @@ You said: [original message]
 2. Ensure you're logged in: `wrangler auth login`
 3. Check account has Workers access
 
-### Manual Commands
+## Deployment Verification
 
-If automatic setup fails, you can run commands manually:
+If you need to verify your deployment manually:
+
+```bash
+# 1. Test worker is responding
+curl -I "${WORKER_ROUTE}/"
+# Should return 404 (expected for GET /)
+
+# 2. Test webhook security
+curl -X POST "${WORKER_ROUTE}/webhook" \
+  -H "X-Telegram-Bot-Api-Secret-Token: invalid" \
+  -H "Content-Type: application/json" \
+  -d '{"test": "data"}'
+# Should return 401 Unauthorized
+
+# 3. Check Telegram webhook status
+curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
+# Should show your webhook URL and status
+
+# 4. Test with actual message to bot on Telegram
+```
+
+### Manual Setup Commands
+
+If you prefer to run commands individually:
 
 ```bash
 # Create KV namespaces and update wrangler.toml with IDs
@@ -230,8 +264,13 @@ wrangler kv:namespace create RATE_LIMITS
 wrangler secret put BOT_TOKEN
 wrangler secret put WEBHOOK_SECRET
 
-# Deploy worker and configure webhook
-npm run setup
+# Deploy worker
+wrangler deploy
+
+# Configure webhook
+curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d "{\"url\": \"${WORKER_ROUTE}/webhook\", \"secret_token\": \"${WEBHOOK_SECRET}\"}"
 ```
 
 ## Security

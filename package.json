@@ -7,10 +7,7 @@
     "dev": "wrangler dev",
     "test": "vitest",
     "build": "tsc",
-    "deploy": "wrangler deploy",
-    "setup:webhook": "tsx scripts/setup-webhook.ts",
-    "setup": "npm run deploy && npm run setup:webhook",
-    "verify": "tsx scripts/verify-deployment.ts"
+    "deploy": "wrangler deploy"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.0.0",
