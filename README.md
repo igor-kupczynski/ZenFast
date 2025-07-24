@@ -52,19 +52,59 @@ WEBHOOK_SECRET=generate-random-secret-here
 WORKER_ROUTE=https://bot.zenfast.eu
 ```
 
-### 3. Automated Deployment
+### 3. Create KV Namespaces
+
+Create the required KV namespaces and add their IDs to `wrangler.toml`:
 
 ```bash
-# Run all setup steps
+# Create KV namespaces (run once)
+wrangler kv:namespace create API_KEYS
+wrangler kv:namespace create CHATS
+wrangler kv:namespace create RATE_LIMITS
+```
+
+Each command will output something like:
+```
+🌀 Creating namespace with title "zenfast-API_KEYS"
+✨ Success! Created KV namespace with title "zenfast-API_KEYS" and id "abc123def456"
+```
+
+Update `wrangler.toml` with the namespace IDs:
+
+```toml
+[[kv_namespaces]]
+binding = "API_KEYS"
+id = "abc123def456"  # Use the actual ID from create command
+
+[[kv_namespaces]]
+binding = "CHATS"
+id = "def456ghi789"  # Use the actual ID from create command
+
+[[kv_namespaces]]
+binding = "RATE_LIMITS"
+id = "ghi789jkl012"  # Use the actual ID from create command
+```
+
+### 4. Set Environment Secrets
+
+```bash
+# Set required secrets
+wrangler secret put BOT_TOKEN
+wrangler secret put WEBHOOK_SECRET
+```
+
+### 5. Deploy and Configure Webhook
+
+```bash
+# Deploy and setup webhook
 npm run setup
 ```
 
 This command will:
-1. Create KV namespaces and update `wrangler.toml`
-2. Deploy the worker to Cloudflare
-3. Configure the Telegram webhook
+1. Deploy the worker to Cloudflare
+2. Configure the Telegram webhook
 
-### 4. Test Your Bot
+### 6. Test Your Bot
 
 Send a message to your bot on Telegram. It should respond with:
 ```
@@ -153,9 +193,8 @@ You said: [original message]
 | `npm test` | Run unit tests |
 | `npm run build` | Compile TypeScript |
 | `npm run deploy` | Deploy to Cloudflare Workers |
-| `npm run setup:namespaces` | Create KV namespaces |
 | `npm run setup:webhook` | Configure Telegram webhook |
-| `npm run setup` | Full automated setup |
+| `npm run setup` | Deploy worker and configure webhook |
 | `npm run verify` | Verify deployment status |
 
 ## Troubleshooting
@@ -182,18 +221,17 @@ You said: [original message]
 If automatic setup fails, you can run commands manually:
 
 ```bash
-# Create KV namespaces
-wrangler kv:namespace create "API_KEYS"
-wrangler kv:namespace create "CHATS"
-wrangler kv:namespace create "RATE_LIMITS"
+# Create KV namespaces and update wrangler.toml with IDs
+wrangler kv:namespace create API_KEYS
+wrangler kv:namespace create CHATS
+wrangler kv:namespace create RATE_LIMITS
 
-# Deploy worker
-wrangler deploy
+# Set environment secrets
+wrangler secret put BOT_TOKEN
+wrangler secret put WEBHOOK_SECRET
 
-# Set webhook (replace with your values)
-curl -X POST https://api.telegram.org/bot<BOT_TOKEN>/setWebhook \
-  -d "url=https://your-worker.workers.dev/webhook" \
-  -d "secret_token=your-webhook-secret"
+# Deploy worker and configure webhook
+npm run setup
 ```
 
 ## Security

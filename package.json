@@ -8,9 +8,8 @@
     "test": "vitest",
     "build": "tsc",
     "deploy": "wrangler deploy",
-    "setup:namespaces": "tsx scripts/create-namespaces.ts",
     "setup:webhook": "tsx scripts/setup-webhook.ts",
-    "setup": "npm run setup:namespaces && npm run deploy && npm run setup:webhook",
+    "setup": "npm run deploy && npm run setup:webhook",
     "verify": "tsx scripts/verify-deployment.ts"
   },
   "devDependencies": {
