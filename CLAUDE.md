@@ -8,7 +8,7 @@ ZenFast is a Telegram bot for small groups of trusted users (friends/family). It
 
 ## Key Context
 
-- **Early stage**: No code yet, only PRD exists
+- **Current stage**: Basic echo bot implemented (Issue #2), foundation ready for authentication features
 - **Shared context**: All users share the same bot instance
 - **Scale**: Designed for 10-50 users, not thousands
 - **Security**: API keys with expiry dates, validate all webhooks
@@ -17,5 +17,9 @@ ZenFast is a Telegram bot for small groups of trusted users (friends/family). It
 ## Important Files
 
 - `specs/prd-001.md`: Detailed requirements and constraints
+- `specs/tdd-001.md`: Technical design and TypeScript types
+- `src/types.ts`: Core type definitions for Telegram API and storage
+- `README.md`: Setup instructions and project structure
+- `test/`: Comprehensive test suite for all functionality
 
-When implementing, prioritize simplicity and security. The project follows "vibe coding" methodology.
+When implementing, prioritize simplicity and security. The project follows "vibe coding" methodology. Keep comments minimal - only add them when the code's purpose isn't obvious from reading it.

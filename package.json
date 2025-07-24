@@ -1,0 +1,27 @@
+{
+  "name": "zenfast",
+  "version": "0.0.1",
+  "description": "ZenFast Telegram bot for small groups of trusted users",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "test": "vitest",
+    "build": "tsc",
+    "deploy": "wrangler deploy",
+    "setup:namespaces": "tsx scripts/create-namespaces.ts",
+    "setup:webhook": "tsx scripts/setup-webhook.ts",
+    "setup": "npm run setup:namespaces && npm run deploy && npm run setup:webhook",
+    "verify": "tsx scripts/verify-deployment.ts"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.0.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "tsx": "^4.0.0",
+    "vitest": "^1.0.0",
+    "wrangler": "^3.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.0"
+  }
+}
