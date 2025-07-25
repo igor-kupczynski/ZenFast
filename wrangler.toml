@@ -1,0 +1,19 @@
+name = "zenfast"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# Environment variables (set via: wrangler secret put <NAME>)
+# BOT_TOKEN - Telegram bot token from @BotFather
+# WEBHOOK_SECRET - Secret token for webhook validation
+
+[[kv_namespaces]]
+binding = "API_KEYS"
+id = "97a2817b085844a7bcd45e2c55d67da6"
+
+[[kv_namespaces]]
+binding = "CHATS"
+id = "4d1f47f8651a49d4938c718723bd5b3e"
+
+[[kv_namespaces]]
+binding = "RATE_LIMITS"
+id = "e0d5b1599610486e9b86cdb00fc52b1e"
