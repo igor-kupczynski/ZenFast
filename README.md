@@ -48,8 +48,9 @@ BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
 # Generate a random secret (use: openssl rand -hex 32)
 WEBHOOK_SECRET=generate-random-secret-here
 
-# Your worker domain (will be provided after first deployment)
-WORKER_ROUTE=https://bot.zenfast.eu
+# Your worker domain (get this from wrangler deploy output)
+# Must be a full URL without wildcards, e.g. https://zenfast.your-subdomain.workers.dev
+WORKER_ROUTE=https://zenfast.your-subdomain.workers.dev
 ```
 
 ### 3. Create KV Namespaces
@@ -58,9 +59,9 @@ Create the required KV namespaces and add their IDs to `wrangler.toml`:
 
 ```bash
 # Create KV namespaces (run once)
-wrangler kv:namespace create API_KEYS
-wrangler kv:namespace create CHATS
-wrangler kv:namespace create RATE_LIMITS
+npx wrangler kv:namespace create API_KEYS
+npx wrangler kv:namespace create CHATS
+npx wrangler kv:namespace create RATE_LIMITS
 ```
 
 Each command will output something like:
@@ -89,33 +90,37 @@ id = "ghi789jkl012"  # Use the actual ID from create command
 
 ```bash
 # Set required secrets
-wrangler secret put BOT_TOKEN
-wrangler secret put WEBHOOK_SECRET
+source .env && echo $BOT_TOKEN | npx wrangler secret put BOT_TOKEN
+source .env && echo $WEBHOOK_SECRET | npx wrangler secret put WEBHOOK_SECRET
 ```
 
 ### 5. Deploy Worker
 
 ```bash
-# Deploy the worker to Cloudflare
-wrangler deploy
+npm run deploy
 ```
 
 ### 6. Configure Telegram Webhook
 
-Set the Telegram webhook to point to your deployed worker:
+First, update your `.env` file with the actual worker URL from the deployment output. Then set the Telegram webhook:
 
 ```bash
-# Set the webhook (replace variables with actual values)
-curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
+# Set the webhook (ensure WORKER_ROUTE is correct in .env)
+source .env && curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
   -H "Content-Type: application/json" \
   -d "{\"url\": \"${WORKER_ROUTE}/webhook\", \"secret_token\": \"${WEBHOOK_SECRET}\"}"
 ```
+
+**Important**: Make sure `WORKER_ROUTE` in your `.env` file is:
+- A complete URL with `https://`
+- Without wildcards or `/*` at the end
+- The actual domain from your deployment (usually `https://zenfast.your-subdomain.workers.dev`)
 
 Verify the webhook was set correctly:
 
 ```bash
 # Check webhook status
-curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
+source .env && curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
 ```
 
 ### 7. Test Your Bot
@@ -147,10 +152,7 @@ npm test webhook.test.ts
 
 ### Manual Verification
 
-```bash
-# Verify deployment status
-npm run verify
-```
+Use the deployment verification commands from the troubleshooting section below.
 
 ## Project Structure
 
@@ -213,9 +215,9 @@ You said: [original message]
 ### Common Issues
 
 **Bot not responding:**
-1. Check webhook status: `curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"`
+1. Check webhook status: `source .env && curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"`
 2. Verify environment variables in `.env`
-3. Check Cloudflare Workers logs: `wrangler tail`
+3. Check Cloudflare Workers logs: `npx wrangler tail`
 
 **Webhook errors:**
 1. Ensure `WEBHOOK_SECRET` matches in `.env` and Telegram
@@ -224,8 +226,13 @@ You said: [original message]
 
 **Deployment failures:**
 1. Verify `CLOUDFLARE_ACCOUNT_ID` is correct
-2. Ensure you're logged in: `wrangler auth login`
+2. Ensure you're logged in: `npx wrangler auth login`
 3. Check account has Workers access
+
+**WORKER_ROUTE format errors:**
+1. Must be a complete URL: `https://your-domain.workers.dev`
+2. No wildcards or `/*` at the end
+3. Get actual URL from `npm run deploy` output
 
 ## Deployment Verification
 
@@ -233,44 +240,21 @@ If you need to verify your deployment manually:
 
 ```bash
 # 1. Test worker is responding
-curl -I "${WORKER_ROUTE}/"
+source .env && curl -I "${WORKER_ROUTE}/"
 # Should return 404 (expected for GET /)
 
 # 2. Test webhook security
-curl -X POST "${WORKER_ROUTE}/webhook" \
+source .env && curl -X POST "${WORKER_ROUTE}/webhook" \
   -H "X-Telegram-Bot-Api-Secret-Token: invalid" \
   -H "Content-Type: application/json" \
   -d '{"test": "data"}'
 # Should return 401 Unauthorized
 
 # 3. Check Telegram webhook status
-curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
+source .env && curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
 # Should show your webhook URL and status
 
 # 4. Test with actual message to bot on Telegram
-```
-
-### Manual Setup Commands
-
-If you prefer to run commands individually:
-
-```bash
-# Create KV namespaces and update wrangler.toml with IDs
-wrangler kv:namespace create API_KEYS
-wrangler kv:namespace create CHATS
-wrangler kv:namespace create RATE_LIMITS
-
-# Set environment secrets
-wrangler secret put BOT_TOKEN
-wrangler secret put WEBHOOK_SECRET
-
-# Deploy worker
-wrangler deploy
-
-# Configure webhook
-curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
-  -H "Content-Type: application/json" \
-  -d "{\"url\": \"${WORKER_ROUTE}/webhook\", \"secret_token\": \"${WEBHOOK_SECRET}\"}"
 ```
 
 ## Security
@@ -299,7 +283,3 @@ See `specs/tdd-001.md` for the full technical design.
 3. Run `npm test` to verify
 4. Test locally with `npm run dev`
 5. Deploy with `npm run deploy`
-
-## License
-
-This project is licensed under the MIT License.
