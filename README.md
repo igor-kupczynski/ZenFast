@@ -10,6 +10,7 @@ A minimal Telegram bot for small groups of trusted users, built on Cloudflare Wo
 - ✅ TypeScript implementation with comprehensive tests
 - ✅ Automated setup scripts for quick deployment
 - ✅ Cloudflare Workers runtime for global edge performance
+- ✅ API key generation and management system
 
 ## Quick Start
 
@@ -130,6 +131,34 @@ Send a message to your bot on Telegram. It should respond with:
 You said: [your message]
 ```
 
+## API Key Management
+
+### Generate API Keys
+
+Create API keys for users to access the bot:
+
+```bash
+# Generate a new API key
+npm run generate-key -- --name "User Name" --expiry "2024-12-31"
+
+# For local testing (stores in local KV)
+npm run generate-key -- --name "Test User" --expiry "2024-12-31" --local
+```
+
+**Important notes:**
+- API keys use 5-word format (e.g., "apple-brave-cloud-dance-eagle")
+- Keys are hashed with SHA-256 before storage
+- Original keys cannot be recovered - save them securely
+- Expiry date must be in YYYY-MM-DD format and in the future
+- Keys are stored in the API_KEYS KV namespace
+
+### Key Security
+
+- Keys provide ~55 bits of entropy (5 words × 2000-word dictionary)
+- Only SHA-256 hashes are stored in KV
+- Keys are displayed only once during generation
+- Expiry dates enforce time-based access control
+
 ## Development
 
 ### Local Development
@@ -158,19 +187,10 @@ Use the deployment verification commands from the troubleshooting section below.
 
 ```
 zenfast/
-├── src/
-│   ├── index.ts          # Main worker entry point
-│   ├── types.ts          # TypeScript type definitions
-│   ├── webhook.ts        # Webhook validation and processing
-│   └── telegram.ts       # Telegram API interaction
-├── test/
-│   ├── index.test.ts     # Worker integration tests
-│   ├── webhook.test.ts   # Webhook validation tests
-│   └── telegram.test.ts  # Telegram API tests
-├── scripts/
-│   ├── create-namespaces.ts  # KV namespace creation
-│   ├── setup-webhook.ts      # Webhook configuration
-│   └── verify-deployment.ts  # Deployment verification
+├── src/           # TypeScript source code
+├── test/          # Unit and integration tests
+├── scripts/       # CLI tools and utilities
+├── specs/         # Requirements and technical design
 ├── package.json
 ├── tsconfig.json
 ├── wrangler.toml
@@ -209,6 +229,7 @@ You said: [original message]
 | `npm test` | Run unit tests |
 | `npm run build` | Compile TypeScript |
 | `npm run deploy` | Deploy to Cloudflare Workers |
+| `npm run generate-key` | Generate API keys for users |
 
 ## Troubleshooting
 
@@ -266,13 +287,13 @@ source .env && curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
 
 ## Next Steps
 
-This basic echo bot provides the foundation for implementing:
+This echo bot with API key generation provides the foundation for implementing:
 
-1. **Authentication system** (as per TDD-001)
-2. **API key management**
-3. **Rate limiting**
-4. **Custom commands**
-5. **Shared context features**
+1. **Authentication system** (API key validation - partially complete)
+2. **Rate limiting**
+3. **Custom commands**
+4. **Shared context features**
+5. **User management and permissions**
 
 See `specs/tdd-001.md` for the full technical design.
 
