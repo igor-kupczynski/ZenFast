@@ -7,13 +7,15 @@
     "dev": "wrangler dev",
     "test": "vitest",
     "build": "tsc",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "generate-key": "tsx scripts/generate-key.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250725.0",
     "@types/node": "^24.1.0",
-    "typescript": "^5.8.3",
+    "@vitest/coverage-v8": "^3.2.4",
     "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
     "vitest": "^3.2.4",
     "wrangler": "^4.26.0"
   },
