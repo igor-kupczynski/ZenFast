@@ -7,12 +7,14 @@ import { execSync } from 'child_process';
 interface CliArgs {
   name: string;
   expiry: string;
+  local: boolean;
 }
 
 function parseArgs(): CliArgs {
   const args = process.argv.slice(2);
   let name = '';
   let expiry = '';
+  let local = false;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--name' && i + 1 < args.length) {
@@ -27,6 +29,8 @@ function parseArgs(): CliArgs {
         expiry = nextArg;
       }
       i++;
+    } else if (args[i] === '--local') {
+      local = true;
     }
   }
 
@@ -53,22 +57,25 @@ function parseArgs(): CliArgs {
     process.exit(1);
   }
 
-  return { name, expiry };
+  return { name, expiry, local };
 }
 
-async function storeKey(keyHash: string, keyData: ApiKeyData): Promise<void> {
+async function storeKey(keyHash: string, keyData: ApiKeyData, useLocal: boolean = false): Promise<void> {
   try {
     const kvData = JSON.stringify(keyData);
     
+    // Determine which storage to use based on a flag
+    const remoteFlag = useLocal ? '' : ' --remote';
+    
     // Try using binding first, then fall back to namespace ID
-    let command = `npx wrangler kv key put --binding API_KEYS "${keyHash}" '${kvData.replace(/'/g, "'\"'\"'")}'`;
+    let command = `npx wrangler kv key put${remoteFlag} --binding API_KEYS "${keyHash}" '${kvData.replace(/'/g, "'\"'\"'")}'`;
     
     try {
       execSync(command, { stdio: 'inherit' });
     } catch (bindingError) {
       console.warn('Warning: Could not use binding, trying with namespace ID...');
       
-      // Fall back to namespace ID approach (for testing/development)
+      // Fall back to the namespace ID approach (for testing/development)
       const listCommand = 'npx wrangler kv namespace list';
       try {
         const namespaceList = execSync(listCommand, { encoding: 'utf8' });
@@ -88,7 +95,7 @@ async function storeKey(keyHash: string, keyData: ApiKeyData): Promise<void> {
         }
         
         const namespaceId = namespaceIdMatch[0];
-        command = `npx wrangler kv key put --namespace-id "${namespaceId}" "${keyHash}" '${kvData.replace(/'/g, "'\"'\"'")}'`;
+        command = `npx wrangler kv key put${remoteFlag} --namespace-id "${namespaceId}" "${keyHash}" '${kvData.replace(/'/g, "'\"'\"'")}'`;
         execSync(command, { stdio: 'inherit' });
       } catch (fallbackError) {
         console.error('Error: Could not store key in KV namespace.');
@@ -108,7 +115,7 @@ async function storeKey(keyHash: string, keyData: ApiKeyData): Promise<void> {
 
 async function main() {
   try {
-    const { name, expiry } = parseArgs();
+    const { name, expiry, local } = parseArgs();
     
     // Generate the API key
     const apiKey = generateApiKey();
@@ -124,11 +131,12 @@ async function main() {
     };
     
     // Store in KV
-    await storeKey(keyHash, keyData);
+    await storeKey(keyHash, keyData, local);
     
-    // Display success message
+    // Display the success message
     console.log(`Generated API key: ${apiKey}`);
     console.log(`Key stored successfully for '${name}' (expires: ${expiry})`);
+    console.log(`Storage location: ${local ? 'local' : 'remote'}`);
     console.log('Save this key securely - it cannot be recovered!');
     
   } catch (error) {
