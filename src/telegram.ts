@@ -2,6 +2,7 @@ export interface SendMessageParams {
   chat_id: number;
   text: string;
   reply_to_message_id?: number;
+  parse_mode?: 'Markdown' | 'MarkdownV2' | 'HTML';
 }
 
 export interface SetWebhookParams {

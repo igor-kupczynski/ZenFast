@@ -57,3 +57,11 @@ export function extractChatId(update: Update): number | null {
 export function extractMessageText(update: Update): string | null {
   return update.message?.text ?? null;
 }
+
+export function extractUser(update: Update): import('./types').User | null {
+  return update.message?.from ?? null;
+}
+
+export function extractMessageId(update: Update): number | null {
+  return update.message?.message_id ?? null;
+}

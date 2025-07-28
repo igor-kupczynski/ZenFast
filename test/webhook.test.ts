@@ -4,6 +4,7 @@ import { Env, Update } from '../src/types.ts';
 
 // Mock environment
 const mockEnv: Env = {
+  BOT_TOKEN: 'test-bot-token',
   WEBHOOK_SECRET: 'test-secret-token',
   API_KEYS: {} as KVNamespace,
   CHATS: {} as KVNamespace,
