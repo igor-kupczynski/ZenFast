@@ -177,6 +177,9 @@ npm test
 
 # Test specific file
 npm test webhook.test.ts
+
+# Type-check TypeScript files including tests
+npm run typecheck
 ```
 
 ### Manual Verification
@@ -228,6 +231,7 @@ You said: [original message]
 | `npm run dev` | Start local development server |
 | `npm test` | Run unit tests |
 | `npm run build` | Compile TypeScript |
+| `npm run typecheck` | Type-check all TypeScript files including tests |
 | `npm run deploy` | Deploy to Cloudflare Workers |
 | `npm run generate-key` | Generate API keys for users |
 

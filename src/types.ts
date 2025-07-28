@@ -8,11 +8,7 @@ export interface ApiKeyData {
 export interface ChatAuthData {
   api_key_hash: string;
   authenticated_at: string; // ISO 8601
-  authenticated_by: {
-    user_id: number;
-    username?: string;
-    first_name: string;
-  };
+  authenticated_by: User;
 }
 
 export interface RateLimitData {

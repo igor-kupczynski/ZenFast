@@ -2,6 +2,7 @@ export interface SendMessageParams {
   chat_id: number;
   text: string;
   reply_to_message_id?: number;
+  parse_mode?: 'Markdown' | 'MarkdownV2' | 'HTML';
 }
 
 export interface SetWebhookParams {
@@ -33,8 +34,7 @@ export class TelegramApi {
         body: JSON.stringify(params),
       });
 
-      const result = await response.json() as TelegramApiResponse;
-      return result;
+      return await response.json() as TelegramApiResponse;
     } catch (error) {
       console.error('Failed to send message:', error);
       return {
@@ -54,8 +54,7 @@ export class TelegramApi {
         body: JSON.stringify(params),
       });
 
-      const result = await response.json() as TelegramApiResponse;
-      return result;
+      return await response.json() as TelegramApiResponse;
     } catch (error) {
       console.error('Failed to set webhook:', error);
       return {
@@ -68,8 +67,7 @@ export class TelegramApi {
   async getWebhookInfo(): Promise<TelegramApiResponse> {
     try {
       const response = await fetch(`${this.baseUrl}/getWebhookInfo`);
-      const result = await response.json() as TelegramApiResponse;
-      return result;
+      return await response.json() as TelegramApiResponse;
     } catch (error) {
       console.error('Failed to get webhook info:', error);
       return {

@@ -95,7 +95,7 @@ describe('Worker Integration', () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it('should process private chat messages and send echo', async () => {
+  it('should prompt for authentication on unauthenticated message', async () => {
     // Mock successful Telegram API response
     mockFetch.mockResolvedValueOnce({
       json: () => Promise.resolve({ ok: true }),
@@ -105,6 +105,7 @@ describe('Worker Integration', () => {
       update_id: 1,
       message: {
         message_id: 1,
+        from: { id: 123, is_bot: false, first_name: 'Test' },
         chat: { id: 123, type: 'private' },
         date: 1234567890,
         text: 'Hello bot!',
@@ -131,7 +132,8 @@ describe('Worker Integration', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: 123,
-          text: 'You said: Hello bot!',
+          text: 'Please authenticate by sending your API key, or use /start for help.',
+          reply_to_message_id: 1,
         }),
       }
     );
@@ -150,6 +152,7 @@ describe('Worker Integration', () => {
       update_id: 1,
       message: {
         message_id: 1,
+        from: { id: 123, is_bot: false, first_name: 'Test' },
         chat: { id: 123, type: 'private' },
         date: 1234567890,
         text: 'Hello bot!',
@@ -170,7 +173,7 @@ describe('Worker Integration', () => {
     expect(response.status).toBe(200);
     expect(await response.text()).toBe('OK');
     expect(console.error).toHaveBeenCalledWith(
-      'Failed to send message:',
+      'Failed to send auth prompt:',
       'Chat not found'
     );
   });
@@ -183,6 +186,7 @@ describe('Worker Integration', () => {
       update_id: 1,
       message: {
         message_id: 1,
+        from: { id: 123, is_bot: false, first_name: 'Test' },
         chat: { id: 123, type: 'private' },
         date: 1234567890,
         text: 'Hello bot!',
@@ -203,7 +207,7 @@ describe('Worker Integration', () => {
     expect(response.status).toBe(200);
     expect(await response.text()).toBe('OK');
     expect(console.error).toHaveBeenCalledWith(
-      'Failed to send message:',
+      'Failed to send auth prompt:',
       'Network error occurred'
     );
   });
@@ -218,6 +222,7 @@ describe('Worker Integration', () => {
       update_id: 1,
       message: {
         message_id: 1,
+        from: { id: 123, is_bot: false, first_name: 'Test' },
         chat: { id: 123, type: 'private' },
         date: 1234567890,
         text: 'Hello bot!',
