@@ -218,7 +218,7 @@ async function recordFailedAttempt(chatId: number, env: Env): Promise<void> {
     }
 
     // Set lockout periods based on attempt count
-    let ttlSeconds = 0;
+    let ttlSeconds: number;
     if (limitData.failed_attempts >= 10) {
       // 24 hour lockout after 10 attempts
       const lockoutUntil = new Date(now.getTime() + 24 * 60 * 60 * 1000);

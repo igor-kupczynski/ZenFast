@@ -1,4 +1,4 @@
-import { Update, Env } from './types';
+import {Env, Update} from './types';
 
 export function validateWebhookSecret(request: Request, env: Env): boolean {
   const secret = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
@@ -7,8 +7,7 @@ export function validateWebhookSecret(request: Request, env: Env): boolean {
 
 export async function parseWebhookUpdate(request: Request): Promise<Update | null> {
   try {
-    const body = await request.json() as Update;
-    return body;
+    return await request.json() as Update;
   } catch (error) {
     console.error('Failed to parse webhook update:', error);
     return null;
@@ -40,11 +39,7 @@ export function shouldProcessMessage(update: Update): boolean {
     }
     
     // Check for bot mentions (simplified - would need bot username)
-    if (text.includes('@zenfast_bot')) {
-      return true;
-    }
-    
-    return false;
+    return text.includes('@zenfast_bot');
   }
 
   return false;
