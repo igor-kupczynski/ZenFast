@@ -30,6 +30,7 @@ ZenFast is a Telegram bot for small groups of trusted users (friends/family). It
 - **Null safety**: Handle potential `undefined` values explicitly, especially for array access and crypto operations
 - **Type safety**: Avoid `any` types, use proper type annotations
 - **Script configuration**: All `.ts` files in `scripts/` must be included in tsconfig.json with proper Node.js types
+- **Test configuration**: Test files use a separate `tsconfig.test.json` that extends the main configuration
 
 ### Import Guidelines
 - Use relative imports for local modules: `import { Type } from '../types'`
@@ -45,6 +46,7 @@ ZenFast is a Telegram bot for small groups of trusted users (friends/family). It
 
 ### Build Verification
 - Always run `npm run build` after making changes
+- Run `npm run typecheck` to verify all TypeScript files including tests compile without errors
 - Ensure `npm test` passes for affected modules
 - CLI scripts must be tested with actual execution
 
