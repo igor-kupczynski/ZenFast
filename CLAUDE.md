@@ -22,6 +22,10 @@ ZenFast is a Telegram bot for small groups of trusted users (friends/family). It
 - `README.md`: Setup instructions and project structure
 - `test/`: Comprehensive test suite for all functionality
 
+## Tools
+
+- `gh`: use github cli to access issues and prs in the ZenFast repo
+
 ## Code Standards
 
 ### TypeScript Requirements
