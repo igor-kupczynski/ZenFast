@@ -20,6 +20,7 @@ describe('Authentication Integration Tests', () => {
     
     mockEnv = {
       BOT_TOKEN: 'test-bot-token',
+      BOT_USERNAME: 'TestBot',
       WEBHOOK_SECRET: 'test-secret',
       API_KEYS: mockApiKeys as any,
       CHATS: mockChats as any,

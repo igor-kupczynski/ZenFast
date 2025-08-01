@@ -56,6 +56,7 @@ export interface MessageEntity {
 // Worker Environment
 export interface Env {
   BOT_TOKEN: string;
+  BOT_USERNAME: string;
   WEBHOOK_SECRET: string;
   API_KEYS: KVNamespace;
   CHATS: KVNamespace;

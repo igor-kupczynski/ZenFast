@@ -17,6 +17,7 @@ describe('Auth Module', () => {
     
     env = {
       BOT_TOKEN: 'test-token',
+      BOT_USERNAME: 'TestBot',
       WEBHOOK_SECRET: 'test-secret',
       API_KEYS: mockApiKeys as any,
       CHATS: mockChats as any,

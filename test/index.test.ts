@@ -11,6 +11,7 @@ vi.spyOn(console, 'error').mockImplementation(() => {});
 
 const mockEnv: Env = {
   BOT_TOKEN: 'test-bot-token',
+  BOT_USERNAME: 'TestBot',
   WEBHOOK_SECRET: 'test-secret',
   API_KEYS: {} as KVNamespace,
   CHATS: {} as KVNamespace,

@@ -14,34 +14,51 @@ export async function parseWebhookUpdate(request: Request): Promise<Update | nul
   }
 }
 
-export function shouldProcessMessage(update: Update): boolean {
-  if (!update.message?.text) {
-    return false;
-  }
-
-  const chat = update.message.chat;
+export function shouldProcessMessage(update: Update, env: Env): boolean {
+  const message = update.message;
+  const text = message?.text;
   
-  // Process all messages in private chats
-  if (chat.type === 'private') {
-    return true;
-  }
-
-  // For groups/channels, only process:
-  // 1. Messages that mention the bot (@zenfast_bot)
-  // 2. Commands starting with /
-  // 3. Replies to bot messages (not implemented in basic version)
-  if (chat.type === 'group' || chat.type === 'supergroup' || chat.type === 'channel') {
-    const text = update.message.text;
+  if (!message || !text) return false;
+  
+  const chat = message.chat;
+  
+  // Private chats: always process
+  if (chat.type === 'private') return true;
+  
+  // Groups/supergroups: check for triggers
+  if (chat.type === 'group' || chat.type === 'supergroup') {
+    const botUsername = env.BOT_USERNAME;
     
-    // Check for bot commands
-    if (text.startsWith('/')) {
-      return true;
+    // 1. Check for bot commands via entities
+    if (message.entities) {
+      for (const entity of message.entities) {
+        if (entity.type === 'bot_command') {
+          return true;
+        }
+        
+        // Check for @mentions
+        if (entity.type === 'mention') {
+          const mention = text.substring(entity.offset, entity.offset + entity.length);
+          if (mention === `@${botUsername}`) {
+            return true;
+          }
+        }
+      }
     }
     
-    // Check for bot mentions (simplified - would need bot username)
-    return text.includes('@zenfast_bot');
+    // 2. Check for replies to bot
+    if (message.reply_to_message?.from?.is_bot) {
+      // Extract bot ID from token and compare
+      const botId = env.BOT_TOKEN.split(':')[0];
+      if (message.reply_to_message.from.id.toString() === botId) {
+        return true;
+      }
+    }
+    
+    // 3. Fallback: simple text check for mentions without entities
+    return text.includes(`@${botUsername}`);
   }
-
+  
   return false;
 }
 

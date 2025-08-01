@@ -6,6 +6,9 @@ compatibility_date = "2024-01-01"
 # BOT_TOKEN - Telegram bot token from @BotFather
 # WEBHOOK_SECRET - Secret token for webhook validation
 
+[vars]
+BOT_USERNAME = "ZenFastBot"
+
 [[kv_namespaces]]
 binding = "API_KEYS"
 id = "97a2817b085844a7bcd45e2c55d67da6"

@@ -87,7 +87,18 @@ binding = "RATE_LIMITS"
 id = "ghi789jkl012"  # Use the actual ID from create command
 ```
 
-### 4. Set Environment Secrets
+### 4. Configure Bot Username
+
+Set the bot username in `wrangler.toml` (this is used for group chat mention detection):
+
+```toml
+[vars]
+BOT_USERNAME = "YourBotUsernameHere"
+```
+
+Replace `YourBotUsernameHere` with your actual bot username (without the @).
+
+### 5. Set Environment Secrets
 
 ```bash
 # Set required secrets
@@ -95,13 +106,13 @@ source .env && echo $BOT_TOKEN | npx wrangler secret put BOT_TOKEN
 source .env && echo $WEBHOOK_SECRET | npx wrangler secret put WEBHOOK_SECRET
 ```
 
-### 5. Deploy Worker
+### 6. Deploy Worker
 
 ```bash
 npm run deploy
 ```
 
-### 6. Configure Telegram Webhook
+### 7. Configure Telegram Webhook
 
 First, update your `.env` file with the actual worker URL from the deployment output. Then set the Telegram webhook:
 
@@ -124,7 +135,7 @@ Verify the webhook was set correctly:
 source .env && curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
 ```
 
-### 7. Test Your Bot
+### 8. Test Your Bot
 
 Send a message to your bot on Telegram. It should respond with:
 ```
@@ -212,10 +223,18 @@ zenfast/
 ### Message Processing
 
 - **Private chats**: Processes all text messages
-- **Group chats**: Processes only:
-  - Messages mentioning `@your_bot_username`
-  - Commands starting with `/`
-  - Replies to bot messages
+- **Group chats**: Processes only messages that:
+  - Contain bot commands (detected via Telegram entities)
+  - Mention the bot `@BOT_USERNAME` (detected via Telegram entities or text fallback)
+  - Are replies to messages sent by the bot (detected via bot ID from token)
+
+**Group Chat Examples:**
+- ✅ `/start` - Bot command
+- ✅ `@ZenFastBot hello` - Bot mention with entity
+- ✅ `hello @ZenFastBot` - Bot mention in text
+- ✅ Replying to a bot message - Reply detection
+- ❌ `Regular group message` - Ignored
+- ❌ `@OtherBot hello` - Different bot mention
 
 ### Echo Functionality
 
