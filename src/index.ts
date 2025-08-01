@@ -19,7 +19,7 @@ export default {
       return new Response('Bad Request', { status: 400 });
     }
 
-    if (!shouldProcessMessage(update)) {
+    if (!shouldProcessMessage(update, env)) {
       return new Response('OK', { status: 200 });
     }
 
