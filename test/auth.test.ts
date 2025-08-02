@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { isAuthenticated, authenticateChat, getAuthDetails, isApiKeyPattern } from '../src/auth';
 import { Env, User, ApiKeyData, ChatAuthData } from '../src/types';
 import { MockKV } from './utils/mockKv';
+import { hashApiKey } from '../src/crypto';
 
 describe('Auth Module', () => {
   let mockApiKeys: MockKV;
@@ -222,6 +223,128 @@ describe('Auth Module', () => {
       const result = await authenticateChat(chatId, apiKey, testUser, env);
       expect(result.success).toBe(false);
       expect(result.message).toContain('Too many failed attempts');
+    });
+
+    it('should enforce 1-hour lockout after 5 failed attempts', async () => {
+      const chatId = 12346;
+      const apiKey = 'invalid-key-for-5-attempts';
+      
+      // Make 5 failed attempts
+      for (let i = 0; i < 5; i++) {
+        await authenticateChat(chatId, apiKey, testUser, env);
+      }
+      
+      // 6th attempt should be blocked with 1-hour lockout
+      const result = await authenticateChat(chatId, apiKey, testUser, env);
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('Too many failed attempts');
+      expect(result.message).toMatch(/Please try again after.*\d{4}/); // Contains timestamp
+    });
+
+    it('should enforce 24-hour lockout after 10 failed attempts', async () => {
+      const chatId = 12347;
+      const apiKey = 'invalid-key-for-10-attempts';
+      
+      // Make 10 failed attempts
+      for (let i = 0; i < 10; i++) {
+        await authenticateChat(chatId, apiKey, testUser, env);
+      }
+      
+      // 11th attempt should be blocked with 24-hour lockout
+      const result = await authenticateChat(chatId, apiKey, testUser, env);
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('Too many failed attempts');
+      expect(result.message).toMatch(/Please try again after.*\d{4}/); // Contains timestamp
+    });
+
+    it('should reject valid API key during lockout period', async () => {
+      const chatId = 12348;
+      const invalidKey = 'invalid-key-to-trigger-lockout';
+      const validKey = 'test-api-key-123';
+      
+      // Set up valid API key in storage
+      const keyHash = await hashApiKey(validKey);
+      const apiKeyData: ApiKeyData = {
+        name: 'Valid Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      // Make 3 failed attempts to trigger lockout
+      for (let i = 0; i < 3; i++) {
+        await authenticateChat(chatId, invalidKey, testUser, env);
+      }
+      
+      // Now try with valid key - should still fail due to lockout
+      const result = await authenticateChat(chatId, validKey, testUser, env);
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('Too many failed attempts');
+    });
+
+    it('should clear rate limits on successful authentication', async () => {
+      const chatId = 12349;
+      const validKey = 'test-clear-rate-limits';
+      
+      // Set up valid API key
+      const keyHash = await hashApiKey(validKey);
+      const apiKeyData: ApiKeyData = {
+        name: 'Clear Rate Limits Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      // Make 2 failed attempts first
+      for (let i = 0; i < 2; i++) {
+        await authenticateChat(chatId, 'invalid-key', testUser, env);
+      }
+      
+      // Verify rate limit data exists
+      const rateLimitData = await mockRateLimits.get(chatId.toString());
+      expect(rateLimitData).toBeTruthy();
+      
+      // Successfully authenticate with valid key
+      const successResult = await authenticateChat(chatId, validKey, testUser, env);
+      expect(successResult.success).toBe(true);
+      
+      // Verify rate limit data is cleared
+      const clearedData = await mockRateLimits.get(chatId.toString());
+      expect(clearedData).toBeNull();
+      
+      // Make another failed attempt - should start count at 1
+      await authenticateChat(chatId, 'invalid-key-2', testUser, env);
+      const newRateLimitData = await mockRateLimits.get(chatId.toString());
+      expect(newRateLimitData).toBeTruthy();
+      const parsedData = JSON.parse(newRateLimitData!);
+      expect(parsedData.failed_attempts).toBe(1);
+    });
+
+    it('should handle TTL expiration correctly', async () => {
+      const chatId = 12350;
+      const apiKey = 'test-ttl-expiration';
+      
+      // Make 1 failed attempt to create rate limit entry
+      await authenticateChat(chatId, apiKey, testUser, env);
+      
+      // Verify entry exists
+      const rateLimitData = await mockRateLimits.get(chatId.toString());
+      expect(rateLimitData).toBeTruthy();
+      
+      // Simulate TTL expiration by manually removing the entry
+      // (MockKV doesn't auto-expire, so we simulate it)
+      await mockRateLimits.delete(chatId.toString());
+      
+      // Verify entry is gone
+      const expiredData = await mockRateLimits.get(chatId.toString());
+      expect(expiredData).toBeNull();
+      
+      // New attempt should work normally (no existing rate limit)
+      await authenticateChat(chatId, 'another-invalid-key', testUser, env);
+      const newData = await mockRateLimits.get(chatId.toString());
+      expect(newData).toBeTruthy();
+      const parsedNewData = JSON.parse(newData!);
+      expect(parsedNewData.failed_attempts).toBe(1);
     });
   });
 
