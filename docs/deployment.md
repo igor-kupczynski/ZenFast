@@ -89,9 +89,9 @@ npx wrangler whoami
 npm run setup-kv
 
 # Or manually create each namespace:
-npx wrangler kv:namespace create API_KEYS
-npx wrangler kv:namespace create CHATS
-npx wrangler kv:namespace create RATE_LIMITS
+npx wrangler kv namespace create zenfast-API_KEYS
+npx wrangler kv namespace create zenfast-CHATS
+npx wrangler kv namespace create zenfast-RATE_LIMITS
 # Then update wrangler.toml with the IDs
 ```
 
@@ -286,7 +286,7 @@ watch -n 30 'curl -s https://your-worker.workers.dev/health | jq .status'
 
 1. Verify namespaces exist:
    ```bash
-   npx wrangler kv:namespace list
+   npx wrangler kv namespace list
    ```
 
 2. Check namespace bindings in wrangler.toml
