@@ -6,6 +6,63 @@ import { extractCommand, routeCommand } from './commands';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    // Handle health check endpoint
+    if (request.method === 'GET' && request.url.endsWith('/health')) {
+      const startTime = Date.now();
+      
+      // Check KV namespace connectivity
+      const kvChecks = {
+        API_KEYS: false,
+        CHATS: false,
+        RATE_LIMITS: false
+      };
+      
+      try {
+        // Test each KV namespace with a simple list operation
+        await env.API_KEYS.list({ limit: 1 });
+        kvChecks.API_KEYS = true;
+      } catch (e) {
+        console.error('API_KEYS KV check failed:', e);
+      }
+      
+      try {
+        await env.CHATS.list({ limit: 1 });
+        kvChecks.CHATS = true;
+      } catch (e) {
+        console.error('CHATS KV check failed:', e);
+      }
+      
+      try {
+        await env.RATE_LIMITS.list({ limit: 1 });
+        kvChecks.RATE_LIMITS = true;
+      } catch (e) {
+        console.error('RATE_LIMITS KV check failed:', e);
+      }
+      
+      const allKvHealthy = Object.values(kvChecks).every(check => check);
+      
+      const healthResponse = {
+        status: allKvHealthy ? 'healthy' : 'degraded',
+        version: '0.0.1',
+        timestamp: new Date().toISOString(),
+        responseTime: Date.now() - startTime,
+        checks: {
+          kv: kvChecks,
+          bot_token: !!env.BOT_TOKEN,
+          webhook_secret: !!env.WEBHOOK_SECRET,
+          bot_username: env.BOT_USERNAME || 'not_configured'
+        }
+      };
+      
+      return new Response(JSON.stringify(healthResponse, null, 2), {
+        status: allKvHealthy ? 200 : 503,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        }
+      });
+    }
+    
     if (request.method !== 'POST' || !request.url.endsWith('/webhook')) {
       return new Response('Not Found', { status: 404 });
     }
