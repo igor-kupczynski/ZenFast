@@ -4,6 +4,8 @@ import { createTelegramApi } from './telegram';
 import { isAuthenticated, authenticateChat, isApiKeyPattern } from './auth';
 import { extractCommand, routeCommand } from './commands';
 
+import packageJson from '../package.json';
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     // Handle health check endpoint
@@ -43,7 +45,7 @@ export default {
       
       const healthResponse = {
         status: allKvHealthy ? 'healthy' : 'degraded',
-        version: '0.0.1',
+        version: packageJson.version,
         timestamp: new Date().toISOString(),
         responseTime: Date.now() - startTime,
         checks: {

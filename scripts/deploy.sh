@@ -104,12 +104,20 @@ fi
 if [ "$WORKER_ROUTE" != "$DEPLOYED_URL" ]; then
     echo -e "\n${YELLOW}📝 Updating WORKER_ROUTE in .env...${NC}"
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        # macOS
+        # macOS (BSD sed)
         sed -i '' "s|WORKER_ROUTE=.*|WORKER_ROUTE=$DEPLOYED_URL|" .env
     else
-        # Linux
+        # Linux (GNU sed)
         sed -i "s|WORKER_ROUTE=.*|WORKER_ROUTE=$DEPLOYED_URL|" .env
     fi
+    
+    # Verify the update succeeded
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to update WORKER_ROUTE automatically${NC}"
+        echo -e "${YELLOW}Please manually update WORKER_ROUTE in .env to: $DEPLOYED_URL${NC}"
+        exit 1
+    fi
+    
     # Reload environment
     source .env
     echo -e "${GREEN}✅ Updated WORKER_ROUTE to: $DEPLOYED_URL${NC}"

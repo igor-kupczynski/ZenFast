@@ -78,13 +78,12 @@ async function main() {
   }
   
   // Validate WORKER_ROUTE format
-  if (!WORKER_ROUTE.startsWith('https://') || WORKER_ROUTE.includes('*') || WORKER_ROUTE.endsWith('/')) {
+  if (!WORKER_ROUTE.startsWith('https://') || WORKER_ROUTE.includes('*')) {
     console.error('❌ Invalid WORKER_ROUTE format');
     console.log('✅ Correct format: https://zenfast.your-subdomain.workers.dev');
     console.log('❌ Incorrect formats:');
     console.log('   - https://zenfast.*.workers.dev');
-    console.log('   - https://zenfast.your-subdomain.workers.dev/');
-    console.log('   - zenfast.your-subdomain.workers.dev');
+    console.log('   - zenfast.your-subdomain.workers.dev (missing https://)');
     process.exit(1);
   }
   
