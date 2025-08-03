@@ -84,7 +84,7 @@ async function storeKey(keyHash: string, keyData: ApiKeyData, useLocal: boolean 
         
         if (!apiKeysLine) {
           console.error('API_KEYS namespace not found. Please create it first with:');
-          console.error('npx wrangler kv namespace create API_KEYS');
+          console.error('npx wrangler kv namespace create zenfast-API_KEYS');
           process.exit(1);
         }
         

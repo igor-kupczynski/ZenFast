@@ -12,135 +12,66 @@ A minimal Telegram bot for small groups of trusted users, built on Cloudflare Wo
 - ✅ Cloudflare Workers runtime for global edge performance
 - ✅ API key generation and management system
 
+## Architecture Overview
+
+```mermaid
+graph TD
+    A[Telegram User] -->|Messages| B[Telegram Servers]
+    B -->|Webhook| C[Cloudflare Worker<br/>Global Edge]
+    
+    C --> D[Request Handler]
+    D --> E[Auth Module]
+    E --> F[Command Router]
+    
+    E -->|Read/Write| G[API_KEYS<br/>KV Store]
+    F -->|Read/Write| H[CHATS<br/>KV Store]
+    D -->|Read/Write| I[RATE_LIMITS<br/>KV Store]
+    
+    style C fill:#f96,stroke:#333,stroke-width:2px
+    style G fill:#bbf,stroke:#333,stroke-width:1px
+    style H fill:#bbf,stroke:#333,stroke-width:1px
+    style I fill:#bbf,stroke:#333,stroke-width:1px
+```
+
+### Components
+
+- **Telegram Webhook**: Receives updates via HTTPS POST
+- **Request Handler**: Validates webhooks and processes messages  
+- **Auth Module**: API key validation and chat authentication
+- **Command Router**: Handles bot commands (/start, /help, etc.)
+- **KV Stores**: Persistent storage for keys, chat state, and rate limits
+
 ## Quick Start
 
-### Prerequisites
-
-- Node.js 18+ installed
-- Cloudflare account with Workers access
-- Telegram bot token from [@BotFather](https://t.me/BotFather)
-
-### 1. Clone and Install
+### One-Command Deployment
 
 ```bash
+# Clone and deploy in under 5 minutes
 git clone <repository-url>
 cd zenfast
 npm install
-```
-
-### 2. Configure Environment
-
-```bash
-# Copy example environment file
 cp .env.example .env
-
-# Edit .env with your actual values
+# Edit .env with your values (see Prerequisites below), then:
+npm run deploy:full
 ```
 
-Fill in your `.env` file:
+### Prerequisites
 
-```env
-# Get from: wrangler whoami
-CLOUDFLARE_ACCOUNT_ID=your-account-id-here
+Before deploying, you need:
 
-# Get from @BotFather on Telegram
-BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+1. **Node.js 18+** installed
+2. **Cloudflare account** with Workers access
+3. **Telegram bot** created via [@BotFather](https://t.me/BotFather)
 
-# Generate a random secret (use: openssl rand -hex 32)
-WEBHOOK_SECRET=generate-random-secret-here
+**Required .env values:**
+- `CLOUDFLARE_ACCOUNT_ID` - Get from `npx wrangler whoami`
+- `BOT_TOKEN` - From @BotFather
+- `WEBHOOK_SECRET` - Generate with `openssl rand -hex 32`
+- `BOT_USERNAME` - Your bot's username (set in wrangler.toml)
 
-# Your worker domain (get this from wrangler deploy output)
-# Must be a full URL without wildcards, e.g. https://zenfast.your-subdomain.workers.dev
-WORKER_ROUTE=https://zenfast.your-subdomain.workers.dev
-```
+**That's it!** The `deploy:full` script handles everything else automatically.
 
-### 3. Create KV Namespaces
-
-Create the required KV namespaces and add their IDs to `wrangler.toml`:
-
-```bash
-# Create KV namespaces (run once)
-npx wrangler kv:namespace create API_KEYS
-npx wrangler kv:namespace create CHATS
-npx wrangler kv:namespace create RATE_LIMITS
-```
-
-Each command will output something like:
-```
-🌀 Creating namespace with title "zenfast-API_KEYS"
-✨ Success! Created KV namespace with title "zenfast-API_KEYS" and id "abc123def456"
-```
-
-Update `wrangler.toml` with the namespace IDs:
-
-```toml
-[[kv_namespaces]]
-binding = "API_KEYS"
-id = "abc123def456"  # Use the actual ID from create command
-
-[[kv_namespaces]]
-binding = "CHATS"
-id = "def456ghi789"  # Use the actual ID from create command
-
-[[kv_namespaces]]
-binding = "RATE_LIMITS"
-id = "ghi789jkl012"  # Use the actual ID from create command
-```
-
-### 4. Configure Bot Username
-
-Set the bot username in `wrangler.toml` (this is used for group chat mention detection):
-
-```toml
-[vars]
-BOT_USERNAME = "YourBotUsernameHere"
-```
-
-Replace `YourBotUsernameHere` with your actual bot username (without the @).
-
-### 5. Set Environment Secrets
-
-```bash
-# Set required secrets
-source .env && echo $BOT_TOKEN | npx wrangler secret put BOT_TOKEN
-source .env && echo $WEBHOOK_SECRET | npx wrangler secret put WEBHOOK_SECRET
-```
-
-### 6. Deploy Worker
-
-```bash
-npm run deploy
-```
-
-### 7. Configure Telegram Webhook
-
-First, update your `.env` file with the actual worker URL from the deployment output. Then set the Telegram webhook:
-
-```bash
-# Set the webhook (ensure WORKER_ROUTE is correct in .env)
-source .env && curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
-  -H "Content-Type: application/json" \
-  -d "{\"url\": \"${WORKER_ROUTE}/webhook\", \"secret_token\": \"${WEBHOOK_SECRET}\"}"
-```
-
-**Important**: Make sure `WORKER_ROUTE` in your `.env` file is:
-- A complete URL with `https://`
-- Without wildcards or `/*` at the end
-- The actual domain from your deployment (usually `https://zenfast.your-subdomain.workers.dev`)
-
-Verify the webhook was set correctly:
-
-```bash
-# Check webhook status
-source .env && curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
-```
-
-### 8. Test Your Bot
-
-Send a message to your bot on Telegram. It should respond with:
-```
-You said: [your message]
-```
+> 📖 **Need help?** See the [complete deployment guide](docs/deployment.md) for detailed instructions, troubleshooting, and manual deployment steps.
 
 ## API Key Management
 
@@ -254,52 +185,15 @@ You said: [original message]
 | `npm run deploy` | Deploy to Cloudflare Workers |
 | `npm run generate-key` | Generate API keys for users |
 
-## Troubleshooting
+## Quick Troubleshooting
 
-### Common Issues
-
-**Bot not responding:**
-1. Check webhook status: `source .env && curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"`
-2. Verify environment variables in `.env`
-3. Check Cloudflare Workers logs: `npx wrangler tail`
-
-**Webhook errors:**
-1. Ensure `WEBHOOK_SECRET` matches in `.env` and Telegram
-2. Verify worker URL is accessible
-3. Check bot token is valid
-
-**Deployment failures:**
-1. Verify `CLOUDFLARE_ACCOUNT_ID` is correct
-2. Ensure you're logged in: `npx wrangler auth login`
-3. Check account has Workers access
-
-**WORKER_ROUTE format errors:**
-1. Must be a complete URL: `https://your-domain.workers.dev`
-2. No wildcards or `/*` at the end
-3. Get actual URL from `npm run deploy` output
-
-## Deployment Verification
-
-If you need to verify your deployment manually:
-
+**Bot not responding?**
 ```bash
-# 1. Test worker is responding
-source .env && curl -I "${WORKER_ROUTE}/"
-# Should return 404 (expected for GET /)
-
-# 2. Test webhook security
-source .env && curl -X POST "${WORKER_ROUTE}/webhook" \
-  -H "X-Telegram-Bot-Api-Secret-Token: invalid" \
-  -H "Content-Type: application/json" \
-  -d '{"test": "data"}'
-# Should return 401 Unauthorized
-
-# 3. Check Telegram webhook status
-source .env && curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
-# Should show your webhook URL and status
-
-# 4. Test with actual message to bot on Telegram
+npm run setup-webhook -- --status  # Check webhook
+npx wrangler tail                   # View logs
 ```
+
+**Need help?** See the [deployment guide](docs/deployment.md) for comprehensive troubleshooting.
 
 ## Security
 
@@ -319,6 +213,38 @@ This echo bot with API key generation provides the foundation for implementing:
 5. **User management and permissions**
 
 See `specs/tdd-001.md` for the full technical design.
+
+## Operations
+
+### Health Check
+```bash
+curl https://your-worker.workers.dev/health
+```
+
+### Monitoring
+```bash
+npx wrangler tail  # Live logs
+```
+
+### Key Commands
+| Command | Description |
+|---------|-------------|
+| `npm run deploy:full` | Complete deployment |
+| `npm run setup-webhook -- --status` | Check webhook |
+| `npm run generate-key -- --name "User" --expiry "2024-12-31"` | Generate API key |
+
+### Cost
+- **Typical usage**: $0/month (free tier)
+- **Heavy usage**: < $5/month
+
+See [cost analysis](docs/cost-analysis.md) and [deployment guide](docs/deployment.md) for details.
+
+## Documentation
+
+- [Deployment Guide](docs/deployment.md) - Detailed deployment instructions
+- [Cost Analysis](docs/cost-analysis.md) - Operational cost breakdown
+- [API Specification](specs/tdd-001.md) - Technical design document
+- [Product Requirements](specs/prd-001.md) - Feature specifications
 
 ## Contributing
 

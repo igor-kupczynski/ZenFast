@@ -9,7 +9,10 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit -p tsconfig.test.json",
     "deploy": "wrangler deploy",
-    "generate-key": "tsx scripts/generate-key.ts"
+    "generate-key": "tsx scripts/generate-key.ts",
+    "setup-kv": "tsx scripts/setup-kv-namespaces.ts",
+    "setup-webhook": "tsx scripts/setup-webhook.ts",
+    "deploy:full": "./scripts/deploy.sh"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250725.0",
