@@ -44,6 +44,8 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
+          # Security note: Secrets are passed via stdin (not command args) and GitHub Actions
+          # automatically masks secret values in logs. The ephemeral runner is destroyed after job.
           printf "%s" "${{ secrets.BOT_TOKEN }}" | npx wrangler secret put BOT_TOKEN
           printf "%s" "${{ secrets.WEBHOOK_SECRET }}" | npx wrangler secret put WEBHOOK_SECRET
 

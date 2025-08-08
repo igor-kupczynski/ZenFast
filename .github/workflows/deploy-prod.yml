@@ -41,6 +41,10 @@ jobs:
           set -eo pipefail
           OUT=$(npx wrangler deploy 2>&1 | tee /dev/stderr)
           URL=$(echo "$OUT" | grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' | head -1 || true)
+          if [ -z "$URL" ]; then
+            echo "Warning: Could not extract worker URL from wrangler output" >&2
+            echo "This is expected if using custom domains. Falling back to WORKER_ROUTE secret." >&2
+          fi
           echo "url=$URL" >> "$GITHUB_OUTPUT"
 
       - name: Determine Worker URL

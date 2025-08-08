@@ -25,7 +25,7 @@ function fail(msg: string, code = 1): never {
   process.exit(code);
 }
 
-async function tg<T = any>(method: string, init?: RequestInit): Promise<T> {
+async function tg<T = unknown>(method: string, init?: RequestInit): Promise<T> {
   const url = `https://api.telegram.org/bot${BOT_TOKEN}/${method}`;
   const res = await fetch(url, init);
   if (!res.ok) {
