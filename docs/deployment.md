@@ -447,3 +447,31 @@ npm run build     # Compilation check
 - **Wrangler CLI**: https://developers.cloudflare.com/workers/wrangler/
 
 For issues specific to ZenFast, check the repository's issue tracker.
+
+
+## CI/CD (Hybrid) Workflows
+
+The repository uses a hybrid approach to manage production deployments and sensitive configuration:
+
+- Deploy (prod) workflow:
+  - Triggers: on push to main and manual dispatch.
+  - Action: builds and deploys the Cloudflare Worker.
+  - Secrets: does NOT write Cloudflare Worker secrets during deploy.
+  - Webhook: conditionally updates the Telegram webhook using a safe script (only when the route differs), keeping logs free of secrets.
+  - Health: runs a simple /health check against the deployed route.
+
+- Configure (prod) workflow:
+  - Trigger: manual (workflow_dispatch), approval-gated via the prod environment.
+  - Action: writes/updates Cloudflare Worker secrets BOT_TOKEN and WEBHOOK_SECRET via wrangler.
+  - Optional: can force-update the Telegram webhook after secrets are applied.
+
+Required GitHub environment secrets (prod):
+- CLOUDFLARE_API_TOKEN (with Workers Script and KV edit permissions)
+- CLOUDFLARE_ACCOUNT_ID
+- BOT_TOKEN
+- WEBHOOK_SECRET
+- WORKER_ROUTE (optional; if not set, the deploy workflow will use the workers.dev URL returned by wrangler)
+
+Rotation and recovery:
+- To rotate secrets or recover from drift (e.g., a deleted secret), run the Configure (prod) workflow.
+- After changing your route, either set WORKER_ROUTE or let the deploy discover the new workers.dev URL; the webhook will update automatically only if it differs.

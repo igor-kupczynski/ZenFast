@@ -1,0 +1,69 @@
+name: Configure (prod)
+
+on:
+  workflow_dispatch:
+    inputs:
+      update_webhook:
+        description: "Force update Telegram webhook after configuring secrets"
+        required: false
+        type: boolean
+        default: false
+      worker_route:
+        description: "Worker base URL (e.g., https://zenfast.<subdomain>.workers.dev). If empty, falls back to WORKER_ROUTE secret."
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: configure-prod
+  cancel-in-progress: false
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    environment: prod
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure Cloudflare secrets
+        if: ${{ secrets.BOT_TOKEN != '' && secrets.WEBHOOK_SECRET != '' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          # Security note: Secrets are passed via stdin (not command args) and GitHub Actions
+          # automatically masks secret values in logs. The ephemeral runner is destroyed after job.
+          printf "%s" "${{ secrets.BOT_TOKEN }}" | npx wrangler secret put BOT_TOKEN
+          printf "%s" "${{ secrets.WEBHOOK_SECRET }}" | npx wrangler secret put WEBHOOK_SECRET
+
+      - name: Determine Worker URL
+        id: route
+        run: |
+          if [ -n "${{ inputs.worker_route }}" ]; then
+            echo "route=${{ inputs.worker_route }}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ secrets.WORKER_ROUTE }}" ]; then
+            echo "route=${{ secrets.WORKER_ROUTE }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "No worker route provided; skipping webhook update."
+          fi
+
+      - name: Force update Telegram webhook
+        if: ${{ inputs.update_webhook && steps.route.outputs.route != '' && secrets.BOT_TOKEN != '' && secrets.WEBHOOK_SECRET != '' }}
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          WORKER_ROUTE: ${{ steps.route.outputs.route }}
+        run: npx tsx scripts/ci-update-webhook.ts --force

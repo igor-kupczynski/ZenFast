@@ -1,0 +1,78 @@
+name: Deploy (prod)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: prod
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+
+      - name: Deploy Worker
+        id: deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -eo pipefail
+          OUT=$(npx wrangler deploy 2>&1 | tee /dev/stderr)
+          URL=$(echo "$OUT" | grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' | head -1 || true)
+          if [ -z "$URL" ]; then
+            echo "Warning: Could not extract worker URL from wrangler output" >&2
+            echo "This is expected if using custom domains. Falling back to WORKER_ROUTE secret." >&2
+          fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Determine Worker URL
+        id: route
+        run: |
+          if [ -n "${{ secrets.WORKER_ROUTE }}" ]; then
+            echo "route=${{ secrets.WORKER_ROUTE }}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ steps.deploy.outputs.url }}" ]; then
+            echo "route=${{ steps.deploy.outputs.url }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "No worker route available; skipping webhook setup and health check."
+          fi
+
+      - name: Conditionally update Telegram webhook
+        if: ${{ steps.route.outputs.route != '' && secrets.BOT_TOKEN != '' && secrets.WEBHOOK_SECRET != '' }}
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          WORKER_ROUTE: ${{ steps.route.outputs.route }}
+        run: npx tsx scripts/ci-update-webhook.ts
+
+      - name: Smoke test health
+        if: ${{ steps.route.outputs.route != '' }}
+        run: |
+          set -e
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.route.outputs.route }}/health")
+          echo "Health status: $STATUS"
+          if [ "$STATUS" -ne 200 ]; then
+            echo "Health endpoint returned $STATUS"
+            exit 1
+          fi
