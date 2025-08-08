@@ -59,12 +59,17 @@ jobs:
           fi
 
       - name: Conditionally update Telegram webhook
-        if: ${{ steps.route.outputs.route != '' && secrets.BOT_TOKEN != '' && secrets.WEBHOOK_SECRET != '' }}
+        if: ${{ steps.route.outputs.route != '' }}
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
           WORKER_ROUTE: ${{ steps.route.outputs.route }}
-        run: npx tsx scripts/ci-update-webhook.ts
+        run: |
+          if [ -n "$BOT_TOKEN" ] && [ -n "$WEBHOOK_SECRET" ]; then
+            npx tsx scripts/ci-update-webhook.ts
+          else
+            echo "Skipping webhook update: BOT_TOKEN or WEBHOOK_SECRET not configured"
+          fi
 
       - name: Smoke test health
         if: ${{ steps.route.outputs.route != '' }}
