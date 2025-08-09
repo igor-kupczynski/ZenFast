@@ -38,7 +38,7 @@ jobs:
         run: npm ci
 
       - name: Configure Cloudflare secrets
-        if: ${{ secrets.BOT_TOKEN != '' && secrets.WEBHOOK_SECRET != '' }}
+        if: ${{ secrets.BOT_TOKEN && secrets.WEBHOOK_SECRET }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -61,7 +61,7 @@ jobs:
           fi
 
       - name: Force update Telegram webhook
-        if: ${{ inputs.update_webhook && steps.route.outputs.route != '' && secrets.BOT_TOKEN != '' && secrets.WEBHOOK_SECRET != '' }}
+        if: ${{ inputs.update_webhook && steps.route.outputs.route != '' && secrets.BOT_TOKEN && secrets.WEBHOOK_SECRET }}
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
