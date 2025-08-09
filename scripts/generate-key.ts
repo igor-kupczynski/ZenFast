@@ -10,54 +10,63 @@ interface CliArgs {
   local: boolean;
 }
 
-function parseArgs(): CliArgs {
-  const args = process.argv.slice(2);
+interface ParseArgsResult {
+  args?: CliArgs;
+  error?: string;
+}
+
+export function parseArgs(argv: string[] = process.argv.slice(2)): ParseArgsResult {
   let name = '';
   let expiry = '';
   let local = false;
 
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--name' && i + 1 < args.length) {
-      const nextArg = args[i + 1];
-      if (nextArg !== undefined) {
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--name' && i + 1 < argv.length) {
+      const nextArg = argv[i + 1];
+      if (nextArg !== undefined && !nextArg.startsWith('--')) {
         name = nextArg;
+        i++;
       }
-      i++;
-    } else if (args[i] === '--expiry' && i + 1 < args.length) {
-      const nextArg = args[i + 1];
-      if (nextArg !== undefined) {
+    } else if (argv[i] === '--expiry' && i + 1 < argv.length) {
+      const nextArg = argv[i + 1];
+      if (nextArg !== undefined && !nextArg.startsWith('--')) {
         expiry = nextArg;
+        i++;
       }
-      i++;
-    } else if (args[i] === '--local') {
+    } else if (argv[i] === '--local') {
       local = true;
     }
   }
 
   if (!name) {
-    console.error('Error: --name is required');
-    process.exit(1);
+    return { error: 'Error: --name is required' };
   }
 
   if (!expiry) {
-    console.error('Error: --expiry is required');
-    process.exit(1);
+    return { error: 'Error: --expiry is required' };
   }
 
+  const validationError = validateExpiry(expiry);
+  if (validationError) {
+    return { error: validationError };
+  }
+
+  return { args: { name, expiry, local } };
+}
+
+export function validateExpiry(expiry: string): string | null {
   // Validate expiry date format (basic validation)
   const expiryDate = new Date(expiry);
   if (isNaN(expiryDate.getTime())) {
-    console.error('Error: Invalid date format for --expiry. Use YYYY-MM-DD format.');
-    process.exit(1);
+    return 'Error: Invalid date format for --expiry. Use YYYY-MM-DD format.';
   }
 
   // Ensure expiry is in the future
   if (expiryDate <= new Date()) {
-    console.error('Error: Expiry date must be in the future');
-    process.exit(1);
+    return 'Error: Expiry date must be in the future';
   }
 
-  return { name, expiry, local };
+  return null;
 }
 
 async function storeKey(keyHash: string, keyData: ApiKeyData, useLocal: boolean = false): Promise<void> {
@@ -115,7 +124,13 @@ async function storeKey(keyHash: string, keyData: ApiKeyData, useLocal: boolean 
 
 async function main() {
   try {
-    const { name, expiry, local } = parseArgs();
+    const result = parseArgs();
+    if (result.error) {
+      console.error(result.error);
+      process.exit(1);
+    }
+    
+    const { name, expiry, local } = result.args!;
     
     // Generate the API key
     const apiKey = generateApiKey();
@@ -145,7 +160,10 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error('Unhandled error:', error);
-  process.exit(1);
-});
+// Only run main if this script is executed directly (not imported)
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((error) => {
+    console.error('Unhandled error:', error);
+    process.exit(1);
+  });
+}
