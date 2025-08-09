@@ -3,6 +3,7 @@
 import { generateApiKey, hashApiKey } from '../src/crypto';
 import { ApiKeyData } from '../src/types';
 import { execSync } from 'child_process';
+import { pathToFileURL } from 'url';
 
 interface CliArgs {
   name: string;
@@ -161,7 +162,7 @@ async function main() {
 }
 
 // Only run main if this script is executed directly (not imported)
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]!).href) {
   main().catch((error) => {
     console.error('Unhandled error:', error);
     process.exit(1);

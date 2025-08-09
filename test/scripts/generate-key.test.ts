@@ -1,8 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { execSync } from 'child_process';
 import { parseArgs, validateExpiry } from '../../scripts/generate-key';
-
-vi.mock('child_process');
 
 describe('parseArgs', () => {
   describe('valid arguments', () => {
@@ -180,17 +177,7 @@ describe('CLI Integration', () => {
     vi.clearAllMocks();
   });
 
-  it('should handle valid CLI arguments end-to-end', async () => {
-    // Mock execSync to simulate successful KV operations
-    const mockExecSync = vi.mocked(execSync);
-    mockExecSync.mockReturnValueOnce(Buffer.from(''));
-
-    // Mock the crypto functions
-    vi.mock('../../src/crypto', () => ({
-      generateApiKey: vi.fn(() => 'test-api-key-value-here-word'),
-      hashApiKey: vi.fn(async () => 'sha256:abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab')
-    }));
-
+  it('should handle valid CLI arguments end-to-end', () => {
     // Test the CLI parsing with valid arguments
     const result = parseArgs(['--name', 'integration-test', '--expiry', '2025-12-31', '--local']);
     
