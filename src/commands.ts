@@ -113,12 +113,12 @@ export async function handleFastCommand(
     const result = await startFast(user.id, user, env);
     if (!result.success) {
       return {
-        text: "Failed to start fast. Please try again.",
+        text: result.error || "Failed to start fast. Please try again.",
         replyToMessageId: messageId
       };
     }
     
-    const startTime = formatTimeInTimezone(result.startTime, result.userData.timezone);
+    const startTime = formatTimeInTimezone(result.startTime!, result.userData.timezone);
     return {
       text: `✅ Fast started at ${startTime}`,
       replyToMessageId: messageId,

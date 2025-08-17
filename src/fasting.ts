@@ -21,11 +21,19 @@ export async function saveUserFastingData(userId: number, data: UserFastingData,
   await env.FASTS.put(key, JSON.stringify(data));
 }
 
-export async function startFast(userId: number, user: User, env: Env): Promise<{ success: boolean; startTime: string; userData: UserFastingData }> {
+export async function startFast(userId: number, user: User, env: Env): Promise<{ success: boolean; startTime?: string; userData: UserFastingData; error?: string }> {
   const userData = await getUserFastingData(userId, env);
-  const startTime = new Date().toISOString();
   
-  // Void any existing unclosed fast by starting a new one
+  // Check if user already has an active fast
+  if (userData.currentFast) {
+    return { 
+      success: false, 
+      userData, 
+      error: "You already have an active fast. Please end your current fast before starting a new one." 
+    };
+  }
+  
+  const startTime = new Date().toISOString();
   userData.currentFast = {
     startedAt: startTime,
     startedBy: user

@@ -54,12 +54,12 @@ async function handleStartFastCallback(
   
   if (!result.success) {
     return {
-      text: "Failed to start fast. Please try again.",
+      text: result.error || "Failed to start fast. Please try again.",
       showAlert: true
     };
   }
 
-  const formattedTime = formatTimeInTimezone(result.startTime, result.userData.timezone);
+  const formattedTime = formatTimeInTimezone(result.startTime!, result.userData.timezone);
   const newText = `✅ Fast started at ${formattedTime}`;
   const newKeyboard = createSingleButtonKeyboard("🛑 End Fast", "end_fast");
 

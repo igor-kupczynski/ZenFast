@@ -83,18 +83,21 @@ describe('Fasting Module', () => {
       expect(storedData.currentFast).toBeDefined();
     });
 
-    it('should void existing fast when starting new one', async () => {
+    it('should prevent starting new fast when one is already active', async () => {
       // Start first fast
-      await startFast(testUser.id, testUser, env);
+      const firstResult = await startFast(testUser.id, testUser, env);
+      expect(firstResult.success).toBe(true);
       
-      // Start second fast (should void the first)
-      const result = await startFast(testUser.id, testUser, env);
+      // Try to start second fast (should fail)
+      const secondResult = await startFast(testUser.id, testUser, env);
       
-      expect(result.success).toBe(true);
-      expect(result.userData.currentFast?.startedAt).toBe(result.startTime);
+      expect(secondResult.success).toBe(false);
+      expect(secondResult.error).toContain('You already have an active fast');
+      expect(secondResult.startTime).toBeUndefined();
       
-      // Should still only have current fast, not in history
-      expect(result.userData.history).toHaveLength(0);
+      // Should still have the original fast
+      expect(secondResult.userData.currentFast?.startedAt).toBe(firstResult.startTime);
+      expect(secondResult.userData.history).toHaveLength(0);
     });
   });
 

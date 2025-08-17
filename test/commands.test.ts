@@ -470,6 +470,9 @@ describe('Commands Module', () => {
       expect(fResult).toBeTruthy();
       expect(fResult!.text).toContain("You've been fasting for");
       
+      // Wait a bit for duration
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
       // Test /end command
       const endResult = await routeCommand('end', chatId, testUser, messageId, '/end', env);
       expect(endResult).toBeTruthy();

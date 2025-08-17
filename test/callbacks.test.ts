@@ -144,6 +144,33 @@ describe('Callbacks Module', () => {
       expect(result.editMessage!.newKeyboard?.inline_keyboard?.[0]?.[0]?.text).toBe('🛑 End Fast');
       expect(result.editMessage!.newKeyboard?.inline_keyboard?.[0]?.[0]?.callback_data).toBe('end_fast');
     });
+
+    it('should prevent starting fast when one is already active', async () => {
+      // Start a fast first
+      const startCallbackQuery: CallbackQuery = {
+        id: 'callback123',
+        from: testUser,
+        message: testMessage,
+        data: 'start_fast',
+        chat_instance: 'instance123'
+      };
+      await routeCallback(startCallbackQuery, env);
+
+      // Try to start another fast
+      const secondCallbackQuery: CallbackQuery = {
+        id: 'callback456',
+        from: testUser,
+        message: testMessage,
+        data: 'start_fast',
+        chat_instance: 'instance123'
+      };
+
+      const result = await routeCallback(secondCallbackQuery, env);
+      
+      expect(result.text).toContain('You already have an active fast');
+      expect(result.showAlert).toBe(true);
+      expect(result.editMessage).toBeUndefined();
+    });
   });
 
   describe('end_fast callback', () => {
