@@ -10,6 +10,7 @@ const mockEnv: Env = {
   API_KEYS: {} as KVNamespace,
   CHATS: {} as KVNamespace,
   RATE_LIMITS: {} as KVNamespace,
+  FASTS: {} as KVNamespace,
 };
 
 describe('Webhook Security', () => {

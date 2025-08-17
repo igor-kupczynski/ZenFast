@@ -1,8 +1,9 @@
 import { Env } from './types';
 import { validateWebhookSecret, parseWebhookUpdate, shouldProcessMessage, extractChatId, extractMessageText, extractUser, extractMessageId } from './webhook';
-import { createTelegramApi } from './telegram';
+import { createTelegramApi, SendMessageParams, AnswerCallbackQueryParams, EditMessageTextParams } from './telegram';
 import { isAuthenticated, authenticateChat, isApiKeyPattern } from './auth';
 import { extractCommand, routeCommand } from './commands';
+import { routeCallback } from './callbacks';
 
 import packageJson from '../package.json';
 
@@ -100,19 +101,60 @@ export default {
     const telegramApi = createTelegramApi(botToken);
 
     try {
+      // Check if this is a callback query
+      if (update.callback_query) {
+        const callbackResult = await routeCallback(update.callback_query, env);
+        
+        // Answer the callback query to remove loading state
+        const answerParams: AnswerCallbackQueryParams = {
+          callback_query_id: update.callback_query.id,
+          show_alert: callbackResult.showAlert || false
+        };
+        if (callbackResult.text) {
+          answerParams.text = callbackResult.text;
+        }
+        const answerResult = await telegramApi.answerCallbackQuery(answerParams);
+
+        if (!answerResult.ok) {
+          console.error('Failed to answer callback query:', answerResult.description);
+        }
+
+        // Edit the original message if requested
+        if (callbackResult.editMessage) {
+          const editParams: EditMessageTextParams = {
+            chat_id: callbackResult.editMessage.chatId,
+            message_id: callbackResult.editMessage.messageId,
+            text: callbackResult.editMessage.newText
+          };
+          if (callbackResult.editMessage.newKeyboard) {
+            editParams.reply_markup = callbackResult.editMessage.newKeyboard;
+          }
+          const editResult = await telegramApi.editMessageText(editParams);
+
+          if (!editResult.ok) {
+            console.error('Failed to edit message:', editResult.description);
+          }
+        }
+
+        return new Response('OK', { status: 200 });
+      }
+
       // Check if this is a command
       const command = extractCommand(messageText);
       
       if (command) {
         // Handle command
-        const commandResult = await routeCommand(command, chatId, user, messageId, env);
+        const commandResult = await routeCommand(command, chatId, user, messageId, messageText, env);
         if (commandResult) {
-          const sendParams: any = {
+          const sendParams: SendMessageParams = {
             chat_id: chatId,
             text: commandResult.text,
           };
           if (commandResult.replyToMessageId) {
             sendParams.reply_to_message_id = commandResult.replyToMessageId;
+          }
+          if (commandResult.replyMarkup) {
+            sendParams.reply_markup = commandResult.replyMarkup;
           }
           const result = await telegramApi.sendMessage(sendParams);
 
@@ -154,16 +196,16 @@ export default {
         return new Response('OK', { status: 200 });
       }
 
-      // User is authenticated - echo the message
-      const echoText = `You said: ${messageText}`;
+      // User is authenticated - send simple confirmation
+      const confirmationText = "Message received. Use /fast, /end, /stats, or /timezone commands to track your fasting.";
       const result = await telegramApi.sendMessage({
         chat_id: chatId,
-        text: echoText,
+        text: confirmationText,
         reply_to_message_id: messageId,
       });
 
       if (!result.ok) {
-        console.error('Failed to send echo message:', result.description);
+        console.error('Failed to send confirmation message:', result.description);
       }
     } catch (error) {
       console.error('Error processing message:', error);

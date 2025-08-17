@@ -20,3 +20,7 @@ id = "4d1f47f8651a49d4938c718723bd5b3e"
 [[kv_namespaces]]
 binding = "RATE_LIMITS"
 id = "e0d5b1599610486e9b86cdb00fc52b1e"
+
+[[kv_namespaces]]
+binding = "FASTS"
+id = "a1857a207ff345caa628062b3651f01e"
