@@ -228,7 +228,7 @@ describe('Authentication Integration Tests', () => {
     expect(response.status).toBe(200);
     
     const sentMessage = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(sentMessage.text).toBe('You said: Hello there!');
+    expect(sentMessage.text).toBe('Message received. Use /fast, /end, /stats, or /timezone commands to track your fasting.');
     expect(sentMessage.reply_to_message_id).toBe(1);
     expect(sentMessage.chat_id).toBe(123);
   });

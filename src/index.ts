@@ -196,16 +196,16 @@ export default {
         return new Response('OK', { status: 200 });
       }
 
-      // User is authenticated - echo the message
-      const echoText = `You said: ${messageText}`;
+      // User is authenticated - send simple confirmation
+      const confirmationText = "Message received. Use /fast, /end, /stats, or /timezone commands to track your fasting.";
       const result = await telegramApi.sendMessage({
         chat_id: chatId,
-        text: echoText,
+        text: confirmationText,
         reply_to_message_id: messageId,
       });
 
       if (!result.ok) {
-        console.error('Failed to send echo message:', result.description);
+        console.error('Failed to send confirmation message:', result.description);
       }
     } catch (error) {
       console.error('Error processing message:', error);

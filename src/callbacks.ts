@@ -50,27 +50,35 @@ async function handleStartFastCallback(
   message: Message,
   env: Env
 ): Promise<CallbackResult> {
-  const result = await startFast(user.id, user, env);
-  
-  if (!result.success) {
+  try {
+    const result = await startFast(user.id, user, env);
+    
+    if (!result.success) {
+      return {
+        text: result.error || "Failed to start fast. Please try again.",
+        showAlert: true
+      };
+    }
+
+    const formattedTime = formatTimeInTimezone(result.startTime!, result.userData.timezone);
+    const newText = `✅ Fast started at ${formattedTime}`;
+    const newKeyboard = createSingleButtonKeyboard("🛑 End Fast", "end_fast");
+
     return {
-      text: result.error || "Failed to start fast. Please try again.",
+      editMessage: {
+        messageId: message.message_id,
+        chatId: message.chat.id,
+        newText,
+        newKeyboard
+      }
+    };
+  } catch (error) {
+    console.error('Error in handleStartFastCallback:', error);
+    return {
+      text: "An error occurred while starting your fast. Please try again.",
       showAlert: true
     };
   }
-
-  const formattedTime = formatTimeInTimezone(result.startTime!, result.userData.timezone);
-  const newText = `✅ Fast started at ${formattedTime}`;
-  const newKeyboard = createSingleButtonKeyboard("🛑 End Fast", "end_fast");
-
-  return {
-    editMessage: {
-      messageId: message.message_id,
-      chatId: message.chat.id,
-      newText,
-      newKeyboard
-    }
-  };
 }
 
 async function handleEndFastCallback(
@@ -78,36 +86,44 @@ async function handleEndFastCallback(
   message: Message,
   env: Env
 ): Promise<CallbackResult> {
-  const result = await endFast(user.id, user, env);
-  
-  if (!result.success || !result.duration || !result.fastEntry) {
+  try {
+    const result = await endFast(user.id, user, env);
+    
+    if (!result.success || !result.duration || !result.fastEntry) {
+      return {
+        text: "No active fast to end.",
+        showAlert: true
+      };
+    }
+
+    const durationText = formatDuration(result.duration);
+    const fastsThisWeek = getFastsThisWeek(result.userData.history, result.userData.timezone);
+    
+    let weekText;
+    if (fastsThisWeek === 1) {
+      weekText = ' (Your 1st fast this week)';
+    } else {
+      weekText = ` (Your ${fastsThisWeek}${getOrdinalSuffix(fastsThisWeek)} fast this week)`;
+    }
+
+    const newText = `✅ Great job! You fasted for ${durationText}${weekText}`;
+    const newKeyboard = createSingleButtonKeyboard("🚀 Start Fast", "start_fast");
+
     return {
-      text: "No active fast to end.",
+      editMessage: {
+        messageId: message.message_id,
+        chatId: message.chat.id,
+        newText,
+        newKeyboard
+      }
+    };
+  } catch (error) {
+    console.error('Error in handleEndFastCallback:', error);
+    return {
+      text: "An error occurred while ending your fast. Please try again.",
       showAlert: true
     };
   }
-
-  const durationText = formatDuration(result.duration);
-  const fastsThisWeek = getFastsThisWeek(result.userData.history, result.userData.timezone);
-  
-  let weekText = '';
-  if (fastsThisWeek === 1) {
-    weekText = ' (Your 1st fast this week)';
-  } else {
-    weekText = ` (Your ${fastsThisWeek}${getOrdinalSuffix(fastsThisWeek)} fast this week)`;
-  }
-
-  const newText = `✅ Great job! You fasted for ${durationText}${weekText}`;
-  const newKeyboard = createSingleButtonKeyboard("🚀 Start Fast", "start_fast");
-
-  return {
-    editMessage: {
-      messageId: message.message_id,
-      chatId: message.chat.id,
-      newText,
-      newKeyboard
-    }
-  };
 }
 
 function getOrdinalSuffix(num: number): string {
