@@ -1,6 +1,6 @@
 import { Env } from './types';
 import { validateWebhookSecret, parseWebhookUpdate, shouldProcessMessage, extractChatId, extractMessageText, extractUser, extractMessageId } from './webhook';
-import { createTelegramApi } from './telegram';
+import { createTelegramApi, SendMessageParams, AnswerCallbackQueryParams, EditMessageTextParams } from './telegram';
 import { isAuthenticated, authenticateChat, isApiKeyPattern } from './auth';
 import { extractCommand, routeCommand } from './commands';
 import { routeCallback } from './callbacks';
@@ -106,7 +106,7 @@ export default {
         const callbackResult = await routeCallback(update.callback_query, env);
         
         // Answer the callback query to remove loading state
-        const answerParams: any = {
+        const answerParams: AnswerCallbackQueryParams = {
           callback_query_id: update.callback_query.id,
           show_alert: callbackResult.showAlert || false
         };
@@ -121,7 +121,7 @@ export default {
 
         // Edit the original message if requested
         if (callbackResult.editMessage) {
-          const editParams: any = {
+          const editParams: EditMessageTextParams = {
             chat_id: callbackResult.editMessage.chatId,
             message_id: callbackResult.editMessage.messageId,
             text: callbackResult.editMessage.newText
@@ -146,7 +146,7 @@ export default {
         // Handle command
         const commandResult = await routeCommand(command, chatId, user, messageId, messageText, env);
         if (commandResult) {
-          const sendParams: any = {
+          const sendParams: SendMessageParams = {
             chat_id: chatId,
             text: commandResult.text,
           };

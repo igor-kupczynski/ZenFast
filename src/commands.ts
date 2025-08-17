@@ -14,6 +14,7 @@ import {
   getRecentFasts 
 } from './fasting';
 import { createSingleButtonKeyboard } from './telegram';
+import { getOrdinalSuffix } from './utils';
 
 export interface CommandResult {
   text: string;
@@ -353,20 +354,4 @@ export async function routeCommand(
 
 function formatDate(date: Date): string {
   return date.toISOString().split('T')[0] || '';
-}
-
-function getOrdinalSuffix(num: number): string {
-  const lastDigit = num % 10;
-  const lastTwoDigits = num % 100;
-  
-  if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
-    return 'th';
-  }
-  
-  switch (lastDigit) {
-    case 1: return 'st';
-    case 2: return 'nd';
-    case 3: return 'rd';
-    default: return 'th';
-  }
 }

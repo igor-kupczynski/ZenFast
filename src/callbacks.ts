@@ -2,6 +2,7 @@ import { Env, User, Message, CallbackQuery } from './types';
 import { isAuthenticated } from './auth';
 import { startFast, endFast, formatDuration, formatTimeInTimezone, getFastsThisWeek } from './fasting';
 import { createSingleButtonKeyboard } from './telegram';
+import { getOrdinalSuffix } from './utils';
 
 export interface CallbackResult {
   text?: string;
@@ -123,21 +124,5 @@ async function handleEndFastCallback(
       text: "An error occurred while ending your fast. Please try again.",
       showAlert: true
     };
-  }
-}
-
-function getOrdinalSuffix(num: number): string {
-  const lastDigit = num % 10;
-  const lastTwoDigits = num % 100;
-  
-  if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
-    return 'th';
-  }
-  
-  switch (lastDigit) {
-    case 1: return 'st';
-    case 2: return 'nd';
-    case 3: return 'rd';
-    default: return 'th';
   }
 }
