@@ -1,5 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { handleStartCommand, handleStatusCommand, extractCommand, routeCommand } from '../src/commands';
+import { 
+  handleStartCommand, 
+  handleStatusCommand, 
+  handleFastCommand,
+  handleEndCommand,
+  handleStatsCommand,
+  handleTimezoneCommand,
+  extractCommand, 
+  routeCommand 
+} from '../src/commands';
 import { Env, User, ApiKeyData, ChatAuthData } from '../src/types';
 import { MockKV } from './utils/mockKv';
 
@@ -7,6 +16,7 @@ describe('Commands Module', () => {
   let mockApiKeys: MockKV;
   let mockChats: MockKV;
   let mockRateLimits: MockKV;
+  let mockFasts: MockKV;
   let env: Env;
   let testUser: User;
 
@@ -14,6 +24,7 @@ describe('Commands Module', () => {
     mockApiKeys = new MockKV();
     mockChats = new MockKV();
     mockRateLimits = new MockKV();
+    mockFasts = new MockKV();
     
     env = {
       BOT_TOKEN: 'test-token',
@@ -22,6 +33,7 @@ describe('Commands Module', () => {
       API_KEYS: mockApiKeys as any,
       CHATS: mockChats as any,
       RATE_LIMITS: mockRateLimits as any,
+      FASTS: mockFasts as any,
     };
 
     testUser = {
@@ -144,12 +156,274 @@ describe('Commands Module', () => {
     });
   });
 
+  describe('handleFastCommand', () => {
+    it('should require authentication', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      const result = await handleFastCommand(chatId, testUser, messageId, env);
+      
+      expect(result.text).toContain('Please authenticate by sending your API key first.');
+    });
+
+    it('should start a fast when not currently fasting', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      const result = await handleFastCommand(chatId, testUser, messageId, env);
+      
+      expect(result.text).toContain('✅ Fast started at');
+      expect(result.replyMarkup).toBeDefined();
+      expect(result.replyMarkup?.inline_keyboard?.[0]?.[0]?.text).toBe('🛑 End Fast');
+    });
+
+    it('should show current fast duration when already fasting', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      // Start a fast first
+      await handleFastCommand(chatId, testUser, messageId, env);
+      
+      // Then call again to see current duration
+      const result = await handleFastCommand(chatId, testUser, messageId, env);
+      
+      expect(result.text).toContain("You've been fasting for");
+      expect(result.replyMarkup?.inline_keyboard?.[0]?.[0]?.text).toBe('🛑 End Fast');
+    });
+  });
+
+  describe('handleEndCommand', () => {
+    it('should require authentication', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      const result = await handleEndCommand(chatId, testUser, messageId, env);
+      
+      expect(result.text).toContain('Please authenticate by sending your API key first.');
+    });
+
+    it('should end current fast successfully', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      // Start a fast first
+      await handleFastCommand(chatId, testUser, messageId, env);
+      
+      // Wait a bit for duration
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      // End the fast
+      const result = await handleEndCommand(chatId, testUser, messageId, env);
+      
+      expect(result.text).toContain('✅ Great job! You fasted for');
+      expect(result.text).toContain('1st fast this week');
+      expect(result.replyMarkup?.inline_keyboard?.[0]?.[0]?.text).toBe('🚀 Start Fast');
+    });
+
+    it('should show last fast when not currently fasting', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      const result = await handleEndCommand(chatId, testUser, messageId, env);
+      
+      expect(result.text).toContain("You're not currently fasting and have no fasting history.");
+      expect(result.replyMarkup?.inline_keyboard?.[0]?.[0]?.text).toBe('🚀 Start Fast');
+    });
+  });
+
+  describe('handleStatsCommand', () => {
+    it('should require authentication', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      const result = await handleStatsCommand(chatId, testUser, messageId, env);
+      
+      expect(result.text).toContain('Please authenticate by sending your API key first.');
+    });
+
+    it('should show no history message for new user', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      const result = await handleStatsCommand(chatId, testUser, messageId, env);
+      
+      expect(result.text).toContain('📊 No fasting history yet');
+      expect(result.replyMarkup?.inline_keyboard?.[0]?.[0]?.text).toBe('🚀 Start Fast');
+    });
+  });
+
+  describe('handleTimezoneCommand', () => {
+    it('should require authentication', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      const result = await handleTimezoneCommand(chatId, testUser, messageId, '/timezone', env);
+      
+      expect(result.text).toContain('Please authenticate by sending your API key first.');
+    });
+
+    it('should show current timezone when no argument provided', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      const result = await handleTimezoneCommand(chatId, testUser, messageId, '/timezone', env);
+      
+      expect(result.text).toContain('Your current timezone is: Europe/Paris');
+    });
+
+    it('should update timezone successfully', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      const result = await handleTimezoneCommand(chatId, testUser, messageId, '/timezone America/New_York', env);
+      
+      expect(result.text).toContain('✅ Timezone updated to: America/New_York');
+    });
+
+    it('should reject invalid timezone', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      const result = await handleTimezoneCommand(chatId, testUser, messageId, '/timezone Invalid/Timezone', env);
+      
+      expect(result.text).toContain('Invalid timezone: Invalid/Timezone');
+    });
+  });
+
   describe('routeCommand', () => {
     it('should route start command correctly', async () => {
       const chatId = 12345;
       const messageId = 100;
       
-      const result = await routeCommand('start', chatId, testUser, messageId, env);
+      const result = await routeCommand('start', chatId, testUser, messageId, '/start', env);
       
       expect(result).toBeTruthy();
       expect(result!.text).toContain('Welcome to ZenFast!');
@@ -159,17 +433,111 @@ describe('Commands Module', () => {
       const chatId = 12345;
       const messageId = 100;
       
-      const result = await routeCommand('status', chatId, testUser, messageId, env);
+      const result = await routeCommand('status', chatId, testUser, messageId, '/status', env);
       
       expect(result).toBeTruthy();
       expect(result!.text).toContain('Authentication Status:');
+    });
+
+    it('should route fast commands correctly', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      // Test /fast command
+      const fastResult = await routeCommand('fast', chatId, testUser, messageId, '/fast', env);
+      expect(fastResult).toBeTruthy();
+      expect(fastResult!.text).toContain('Fast started at');
+      expect(fastResult!.replyMarkup).toBeDefined();
+      
+      // Test /f alias
+      const fResult = await routeCommand('f', chatId, testUser, messageId, '/f', env);
+      expect(fResult).toBeTruthy();
+      expect(fResult!.text).toContain("You've been fasting for");
+      
+      // Test /end command
+      const endResult = await routeCommand('end', chatId, testUser, messageId, '/end', env);
+      expect(endResult).toBeTruthy();
+      expect(endResult!.text).toContain('Great job! You fasted for');
+      
+      // Test /e alias
+      const eResult = await routeCommand('e', chatId, testUser, messageId, '/e', env);
+      expect(eResult).toBeTruthy();
+      expect(eResult!.text).toContain("You're not currently fasting");
+    });
+
+    it('should route stats command correctly', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      const result = await routeCommand('stats', chatId, testUser, messageId, '/stats', env);
+      
+      expect(result).toBeTruthy();
+      expect(result!.text).toContain('📊');
+    });
+
+    it('should route timezone command correctly', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      const result = await routeCommand('timezone', chatId, testUser, messageId, '/timezone America/New_York', env);
+      
+      expect(result).toBeTruthy();
+      expect(result!.text).toContain('Timezone updated to: America/New_York');
     });
 
     it('should return null for unknown commands', async () => {
       const chatId = 12345;
       const messageId = 100;
       
-      const result = await routeCommand('unknown', chatId, testUser, messageId, env);
+      const result = await routeCommand('unknown', chatId, testUser, messageId, '/unknown', env);
       
       expect(result).toBeNull();
     });
@@ -178,7 +546,7 @@ describe('Commands Module', () => {
       const chatId = 12345;
       const messageId = 100;
       
-      const result = await routeCommand('help', chatId, testUser, messageId, env);
+      const result = await routeCommand('help', chatId, testUser, messageId, '/help', env);
       
       expect(result).toBeNull();
     });

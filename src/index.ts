@@ -3,6 +3,7 @@ import { validateWebhookSecret, parseWebhookUpdate, shouldProcessMessage, extrac
 import { createTelegramApi } from './telegram';
 import { isAuthenticated, authenticateChat, isApiKeyPattern } from './auth';
 import { extractCommand, routeCommand } from './commands';
+import { routeCallback } from './callbacks';
 
 import packageJson from '../package.json';
 
@@ -100,12 +101,50 @@ export default {
     const telegramApi = createTelegramApi(botToken);
 
     try {
+      // Check if this is a callback query
+      if (update.callback_query) {
+        const callbackResult = await routeCallback(update.callback_query, env);
+        
+        // Answer the callback query to remove loading state
+        const answerParams: any = {
+          callback_query_id: update.callback_query.id,
+          show_alert: callbackResult.showAlert || false
+        };
+        if (callbackResult.text) {
+          answerParams.text = callbackResult.text;
+        }
+        const answerResult = await telegramApi.answerCallbackQuery(answerParams);
+
+        if (!answerResult.ok) {
+          console.error('Failed to answer callback query:', answerResult.description);
+        }
+
+        // Edit the original message if requested
+        if (callbackResult.editMessage) {
+          const editParams: any = {
+            chat_id: callbackResult.editMessage.chatId,
+            message_id: callbackResult.editMessage.messageId,
+            text: callbackResult.editMessage.newText
+          };
+          if (callbackResult.editMessage.newKeyboard) {
+            editParams.reply_markup = callbackResult.editMessage.newKeyboard;
+          }
+          const editResult = await telegramApi.editMessageText(editParams);
+
+          if (!editResult.ok) {
+            console.error('Failed to edit message:', editResult.description);
+          }
+        }
+
+        return new Response('OK', { status: 200 });
+      }
+
       // Check if this is a command
       const command = extractCommand(messageText);
       
       if (command) {
         // Handle command
-        const commandResult = await routeCommand(command, chatId, user, messageId, env);
+        const commandResult = await routeCommand(command, chatId, user, messageId, messageText, env);
         if (commandResult) {
           const sendParams: any = {
             chat_id: chatId,
@@ -113,6 +152,9 @@ export default {
           };
           if (commandResult.replyToMessageId) {
             sendParams.reply_to_message_id = commandResult.replyToMessageId;
+          }
+          if (commandResult.replyMarkup) {
+            sendParams.reply_markup = commandResult.replyMarkup;
           }
           const result = await telegramApi.sendMessage(sendParams);
 

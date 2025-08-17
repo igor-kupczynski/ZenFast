@@ -25,6 +25,7 @@ describe('Authentication Integration Tests', () => {
       API_KEYS: mockApiKeys as any,
       CHATS: mockChats as any,
       RATE_LIMITS: mockRateLimits as any,
+      FASTS: new MockKV() as any,
     };
   });
 
