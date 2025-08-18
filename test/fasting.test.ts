@@ -229,32 +229,42 @@ describe('Fasting Module', () => {
   describe('getFastsThisWeek', () => {
     it('should count fasts in current week', () => {
       const now = new Date();
-      const thisWeek = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000); // 2 days ago
-      const lastWeek = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000); // 10 days ago
+      
+      // Calculate the start of the current week (Monday)
+      const startOfWeek = new Date(now);
+      const dayOfWeek = startOfWeek.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      startOfWeek.setDate(startOfWeek.getDate() - daysToMonday);
+      startOfWeek.setHours(0, 0, 0, 0);
+      
+      // Create dates that are definitely in this week (after Monday)
+      const dayInThisWeek = new Date(startOfWeek.getTime() + 1 * 24 * 60 * 60 * 1000); // Tuesday
+      const anotherDayInThisWeek = new Date(startOfWeek.getTime() + 3 * 24 * 60 * 60 * 1000); // Thursday
+      const dayInLastWeek = new Date(startOfWeek.getTime() - 5 * 24 * 60 * 60 * 1000); // 5 days before Monday
       
       const history: FastEntry[] = [
         {
-          startedAt: lastWeek.toISOString(),
-          endedAt: lastWeek.toISOString(),
+          startedAt: dayInLastWeek.toISOString(),
+          endedAt: dayInLastWeek.toISOString(),
           duration: 16 * 60 * 60 * 1000,
           endedBy: testUser
         },
         {
-          startedAt: thisWeek.toISOString(),
-          endedAt: thisWeek.toISOString(),
+          startedAt: dayInThisWeek.toISOString(),
+          endedAt: dayInThisWeek.toISOString(),
           duration: 16 * 60 * 60 * 1000,
           endedBy: testUser
         },
         {
-          startedAt: now.toISOString(),
-          endedAt: now.toISOString(),
+          startedAt: anotherDayInThisWeek.toISOString(),
+          endedAt: anotherDayInThisWeek.toISOString(),
           duration: 16 * 60 * 60 * 1000,
           endedBy: testUser
         }
       ];
       
       const count = getFastsThisWeek(history, 'UTC');
-      expect(count).toBeGreaterThanOrEqual(2); // At least the 2 recent ones
+      expect(count).toBe(2); // Exactly 2 fasts in the current week
     });
   });
 
