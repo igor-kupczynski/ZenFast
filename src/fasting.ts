@@ -21,7 +21,7 @@ export async function saveUserFastingData(userId: number, data: UserFastingData,
   await env.FASTS.put(key, JSON.stringify(data));
 }
 
-export async function startFast(userId: number, user: User, env: Env): Promise<{ success: boolean; startTime?: string; userData: UserFastingData; error?: string }> {
+export async function startFast(userId: number, user: User, env: Env, customStartTime?: Date): Promise<{ success: boolean; startTime?: string; userData: UserFastingData; error?: string }> {
   const userData = await getUserFastingData(userId, env);
   
   // Check if user already has an active fast
@@ -33,7 +33,7 @@ export async function startFast(userId: number, user: User, env: Env): Promise<{
     };
   }
   
-  const startTime = new Date().toISOString();
+  const startTime = (customStartTime || new Date()).toISOString();
   userData.currentFast = {
     startedAt: startTime,
     startedBy: user
@@ -44,16 +44,25 @@ export async function startFast(userId: number, user: User, env: Env): Promise<{
   return { success: true, startTime, userData };
 }
 
-export async function endFast(userId: number, user: User, env: Env): Promise<{ success: boolean; duration?: number; fastEntry?: FastEntry; userData: UserFastingData }> {
+export async function endFast(userId: number, user: User, env: Env, customEndTime?: Date): Promise<{ success: boolean; duration?: number; fastEntry?: FastEntry; userData: UserFastingData; error?: string }> {
   const userData = await getUserFastingData(userId, env);
   
   if (!userData.currentFast) {
-    return { success: false, userData };
+    return { success: false, userData, error: "You are not currently fasting" };
   }
   
-  const endTime = new Date().toISOString();
+  const endTime = (customEndTime || new Date()).toISOString();
   const startTime = userData.currentFast.startedAt;
   const duration = new Date(endTime).getTime() - new Date(startTime).getTime();
+  
+  // Validate that end time is after start time
+  if (duration <= 0) {
+    return { 
+      success: false, 
+      userData, 
+      error: "End time cannot be before or equal to start time" 
+    };
+  }
   
   const fastEntry: FastEntry = {
     startedAt: startTime,
