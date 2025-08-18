@@ -165,3 +165,71 @@ export function getLastFast(history: FastEntry[]): FastEntry | null {
 export function getRecentFasts(history: FastEntry[], limit: number = 5): FastEntry[] {
   return history.slice(-limit).reverse(); // Get last N fasts, most recent first
 }
+
+export interface PeriodStatistics {
+  totalFasts: number;
+  totalHours: number;
+  averageDuration: number; // in milliseconds
+  longestFast: number; // in milliseconds
+}
+
+export function getWeeklyStatistics(history: FastEntry[], timezone: string): PeriodStatistics {
+  try {
+    const now = new Date();
+    
+    // Get start of week (Monday) in UTC, then adjust for timezone
+    const startOfWeek = new Date(now);
+    const dayOfWeek = startOfWeek.getDay();
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, so 6 days back
+    startOfWeek.setDate(startOfWeek.getDate() - daysToMonday);
+    startOfWeek.setHours(0, 0, 0, 0);
+    
+    // Filter fasts for this week
+    const weekFasts = history.filter(fast => {
+      const fastDate = new Date(fast.endedAt);
+      return fastDate >= startOfWeek;
+    });
+    
+    return calculatePeriodStatistics(weekFasts);
+  } catch (error) {
+    return { totalFasts: 0, totalHours: 0, averageDuration: 0, longestFast: 0 };
+  }
+}
+
+export function getMonthlyStatistics(history: FastEntry[], timezone: string): PeriodStatistics {
+  try {
+    const now = new Date();
+    
+    // Get start of month in UTC, then adjust for timezone
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    
+    // Filter fasts for this month
+    const monthFasts = history.filter(fast => {
+      const fastDate = new Date(fast.endedAt);
+      return fastDate >= startOfMonth;
+    });
+    
+    return calculatePeriodStatistics(monthFasts);
+  } catch (error) {
+    return { totalFasts: 0, totalHours: 0, averageDuration: 0, longestFast: 0 };
+  }
+}
+
+function calculatePeriodStatistics(fasts: FastEntry[]): PeriodStatistics {
+  if (fasts.length === 0) {
+    return { totalFasts: 0, totalHours: 0, averageDuration: 0, longestFast: 0 };
+  }
+  
+  const totalDuration = fasts.reduce((sum, fast) => sum + fast.duration, 0);
+  const longestFast = Math.max(...fasts.map(fast => fast.duration));
+  const averageDuration = totalDuration / fasts.length;
+  const totalHours = Math.round(totalDuration / (1000 * 60 * 60) * 10) / 10; // Round to 1 decimal
+  
+  return {
+    totalFasts: fasts.length,
+    totalHours,
+    averageDuration,
+    longestFast
+  };
+}

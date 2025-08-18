@@ -11,7 +11,10 @@ import {
   formatRelativeTime, 
   getFastsThisWeek, 
   getLastFast, 
-  getRecentFasts 
+  getRecentFasts,
+  getWeeklyStatistics,
+  getMonthlyStatistics,
+  PeriodStatistics
 } from './fasting';
 import { createSingleButtonKeyboard } from './telegram';
 import { getOrdinalSuffix } from './utils';
@@ -323,6 +326,109 @@ export async function handleTimezoneCommand(
   }
 }
 
+export async function handleWeekCommand(
+  chatId: number,
+  user: User,
+  messageId: number,
+  env: Env
+): Promise<CommandResult> {
+  try {
+    const authenticated = await isAuthenticated(chatId, env);
+    if (!authenticated) {
+      return {
+        text: "Please authenticate by sending your API key first.",
+        replyToMessageId: messageId
+      };
+    }
+
+    const userData = await getUserFastingData(user.id, env);
+    const weekStats = getWeeklyStatistics(userData.history, userData.timezone);
+    
+    if (weekStats.totalFasts === 0) {
+      return {
+        text: "📅 This Week's Fasting Summary\n\nNo fasts completed this week yet. Start your first fast to see your weekly progress!",
+        replyToMessageId: messageId,
+        replyMarkup: createSingleButtonKeyboard("🚀 Start Fast", "start_fast")
+      };
+    }
+    
+    const text = formatPeriodStatistics("📅 This Week's Fasting Summary", weekStats);
+    
+    // Determine appropriate button based on current state
+    const buttonText = userData.currentFast ? "🛑 End Fast" : "🚀 Start Fast";
+    const buttonData = userData.currentFast ? "end_fast" : "start_fast";
+    
+    return {
+      text,
+      replyToMessageId: messageId,
+      replyMarkup: createSingleButtonKeyboard(buttonText, buttonData)
+    };
+  } catch (error) {
+    console.error('Error in handleWeekCommand:', error);
+    return {
+      text: "An error occurred while retrieving your weekly stats. Please try again.",
+      replyToMessageId: messageId
+    };
+  }
+}
+
+export async function handleMonthCommand(
+  chatId: number,
+  user: User,
+  messageId: number,
+  env: Env
+): Promise<CommandResult> {
+  try {
+    const authenticated = await isAuthenticated(chatId, env);
+    if (!authenticated) {
+      return {
+        text: "Please authenticate by sending your API key first.",
+        replyToMessageId: messageId
+      };
+    }
+
+    const userData = await getUserFastingData(user.id, env);
+    const monthStats = getMonthlyStatistics(userData.history, userData.timezone);
+    
+    if (monthStats.totalFasts === 0) {
+      return {
+        text: "📊 This Month's Fasting Summary\n\nNo fasts completed this month yet. Start your first fast to see your monthly progress!",
+        replyToMessageId: messageId,
+        replyMarkup: createSingleButtonKeyboard("🚀 Start Fast", "start_fast")
+      };
+    }
+    
+    const text = formatPeriodStatistics("📊 This Month's Fasting Summary", monthStats);
+    
+    // Determine appropriate button based on current state
+    const buttonText = userData.currentFast ? "🛑 End Fast" : "🚀 Start Fast";
+    const buttonData = userData.currentFast ? "end_fast" : "start_fast";
+    
+    return {
+      text,
+      replyToMessageId: messageId,
+      replyMarkup: createSingleButtonKeyboard(buttonText, buttonData)
+    };
+  } catch (error) {
+    console.error('Error in handleMonthCommand:', error);
+    return {
+      text: "An error occurred while retrieving your monthly stats. Please try again.",
+      replyToMessageId: messageId
+    };
+  }
+}
+
+function formatPeriodStatistics(title: string, stats: PeriodStatistics): string {
+  const averageDurationText = formatDuration(stats.averageDuration);
+  const longestFastText = formatDuration(stats.longestFast);
+  
+  return `${title}\n\n` +
+         `📈 Total fasts: ${stats.totalFasts}\n` +
+         `⏰ Total hours: ${stats.totalHours}h\n` +
+         `📊 Average duration: ${averageDurationText}\n` +
+         `🏆 Longest fast: ${longestFastText}`;
+}
+
 export async function routeCommand(
   command: string,
   chatId: number,
@@ -346,6 +452,10 @@ export async function routeCommand(
       return await handleStatsCommand(chatId, user, messageId, env);
     case 'timezone':
       return await handleTimezoneCommand(chatId, user, messageId, messageText, env);
+    case 'week':
+      return await handleWeekCommand(chatId, user, messageId, env);
+    case 'month':
+      return await handleMonthCommand(chatId, user, messageId, env);
     default:
       // Unknown command - ignore silently
       return null;

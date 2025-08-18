@@ -6,6 +6,8 @@ import {
   handleEndCommand,
   handleStatsCommand,
   handleTimezoneCommand,
+  handleWeekCommand,
+  handleMonthCommand,
   extractCommand, 
   routeCommand 
 } from '../src/commands';
@@ -552,6 +554,132 @@ describe('Commands Module', () => {
       const result = await routeCommand('help', chatId, testUser, messageId, '/help', env);
       
       expect(result).toBeNull();
+    });
+
+    it('should route week command correctly', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      const result = await routeCommand('week', chatId, testUser, messageId, '/week', env);
+      
+      expect(result).toBeTruthy();
+      expect(result!.text).toContain("📅 This Week's Fasting Summary");
+    });
+
+    it('should route month command correctly', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      const result = await routeCommand('month', chatId, testUser, messageId, '/month', env);
+      
+      expect(result).toBeTruthy();
+      expect(result!.text).toContain("📊 This Month's Fasting Summary");
+    });
+  });
+
+  describe('handleWeekCommand', () => {
+    it('should require authentication', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      const result = await handleWeekCommand(chatId, testUser, messageId, env);
+      
+      expect(result.text).toContain('Please authenticate by sending your API key first.');
+    });
+
+    it('should show no fasts message when user has no weekly history', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      const result = await handleWeekCommand(chatId, testUser, messageId, env);
+      
+      expect(result.text).toContain('No fasts completed this week yet');
+      expect(result.replyMarkup).toBeDefined();
+    });
+  });
+
+  describe('handleMonthCommand', () => {
+    it('should require authentication', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      const result = await handleMonthCommand(chatId, testUser, messageId, env);
+      
+      expect(result.text).toContain('Please authenticate by sending your API key first.');
+    });
+
+    it('should show no fasts message when user has no monthly history', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      const result = await handleMonthCommand(chatId, testUser, messageId, env);
+      
+      expect(result.text).toContain('No fasts completed this month yet');
+      expect(result.replyMarkup).toBeDefined();
     });
   });
 });
