@@ -10,7 +10,9 @@ import {
   getCurrentFastDuration,
   getFastsThisWeek,
   getLastFast,
-  getRecentFasts
+  getRecentFasts,
+  getWeeklyStatistics,
+  getMonthlyStatistics
 } from '../src/fasting';
 import { Env, User, UserFastingData, FastEntry } from '../src/types';
 import { MockKV } from './utils/mockKv';
@@ -327,6 +329,170 @@ describe('Fasting Module', () => {
       const recent = getRecentFasts(history, 5);
       expect(recent).toHaveLength(1);
       expect(recent[0]?.startedAt).toBe('2024-01-01T10:00:00Z');
+    });
+  });
+
+  describe('getWeeklyStatistics', () => {
+    it('should calculate weekly statistics correctly', () => {
+      const now = new Date();
+      const startOfWeek = new Date(now);
+      const dayOfWeek = startOfWeek.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      startOfWeek.setDate(startOfWeek.getDate() - daysToMonday);
+      startOfWeek.setHours(0, 0, 0, 0);
+      
+      // Create fasts in current week and previous week
+      const thisWeekDay1 = new Date(startOfWeek.getTime() + 1 * 24 * 60 * 60 * 1000);
+      const thisWeekDay2 = new Date(startOfWeek.getTime() + 3 * 24 * 60 * 60 * 1000);
+      const lastWeekDay = new Date(startOfWeek.getTime() - 5 * 24 * 60 * 60 * 1000);
+      
+      const history: FastEntry[] = [
+        {
+          startedAt: lastWeekDay.toISOString(),
+          endedAt: lastWeekDay.toISOString(),
+          duration: 12 * 60 * 60 * 1000, // 12 hours
+          endedBy: testUser
+        },
+        {
+          startedAt: thisWeekDay1.toISOString(),
+          endedAt: thisWeekDay1.toISOString(),
+          duration: 16 * 60 * 60 * 1000, // 16 hours
+          endedBy: testUser
+        },
+        {
+          startedAt: thisWeekDay2.toISOString(),
+          endedAt: thisWeekDay2.toISOString(),
+          duration: 20 * 60 * 60 * 1000, // 20 hours
+          endedBy: testUser
+        }
+      ];
+      
+      const stats = getWeeklyStatistics(history, 'UTC');
+      
+      expect(stats.totalFasts).toBe(2); // Only current week fasts
+      expect(stats.totalHours).toBe(36); // 16 + 20 hours
+      expect(stats.averageDuration).toBe(18 * 60 * 60 * 1000); // 18 hours average
+      expect(stats.longestFast).toBe(20 * 60 * 60 * 1000); // 20 hours longest
+    });
+
+    it('should return zero stats for empty history', () => {
+      const stats = getWeeklyStatistics([], 'UTC');
+      
+      expect(stats.totalFasts).toBe(0);
+      expect(stats.totalHours).toBe(0);
+      expect(stats.averageDuration).toBe(0);
+      expect(stats.longestFast).toBe(0);
+    });
+
+    it('should return zero stats when no fasts this week', () => {
+      const lastMonth = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      
+      const history: FastEntry[] = [
+        {
+          startedAt: lastMonth.toISOString(),
+          endedAt: lastMonth.toISOString(),
+          duration: 16 * 60 * 60 * 1000,
+          endedBy: testUser
+        }
+      ];
+      
+      const stats = getWeeklyStatistics(history, 'UTC');
+      
+      expect(stats.totalFasts).toBe(0);
+      expect(stats.totalHours).toBe(0);
+      expect(stats.averageDuration).toBe(0);
+      expect(stats.longestFast).toBe(0);
+    });
+  });
+
+  describe('getMonthlyStatistics', () => {
+    it('should calculate monthly statistics correctly', () => {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 15);
+      
+      // Create fasts in current month and previous month
+      const thisMonthDay1 = new Date(startOfMonth.getTime() + 5 * 24 * 60 * 60 * 1000);
+      const thisMonthDay2 = new Date(startOfMonth.getTime() + 15 * 24 * 60 * 60 * 1000);
+      
+      const history: FastEntry[] = [
+        {
+          startedAt: lastMonth.toISOString(),
+          endedAt: lastMonth.toISOString(),
+          duration: 14 * 60 * 60 * 1000, // 14 hours
+          endedBy: testUser
+        },
+        {
+          startedAt: thisMonthDay1.toISOString(),
+          endedAt: thisMonthDay1.toISOString(),
+          duration: 18 * 60 * 60 * 1000, // 18 hours
+          endedBy: testUser
+        },
+        {
+          startedAt: thisMonthDay2.toISOString(),
+          endedAt: thisMonthDay2.toISOString(),
+          duration: 22 * 60 * 60 * 1000, // 22 hours
+          endedBy: testUser
+        }
+      ];
+      
+      const stats = getMonthlyStatistics(history, 'UTC');
+      
+      expect(stats.totalFasts).toBe(2); // Only current month fasts
+      expect(stats.totalHours).toBe(40); // 18 + 22 hours
+      expect(stats.averageDuration).toBe(20 * 60 * 60 * 1000); // 20 hours average
+      expect(stats.longestFast).toBe(22 * 60 * 60 * 1000); // 22 hours longest
+    });
+
+    it('should return zero stats for empty history', () => {
+      const stats = getMonthlyStatistics([], 'UTC');
+      
+      expect(stats.totalFasts).toBe(0);
+      expect(stats.totalHours).toBe(0);
+      expect(stats.averageDuration).toBe(0);
+      expect(stats.longestFast).toBe(0);
+    });
+
+    it('should return zero stats when no fasts this month', () => {
+      const threeMonthsAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+      
+      const history: FastEntry[] = [
+        {
+          startedAt: threeMonthsAgo.toISOString(),
+          endedAt: threeMonthsAgo.toISOString(),
+          duration: 16 * 60 * 60 * 1000,
+          endedBy: testUser
+        }
+      ];
+      
+      const stats = getMonthlyStatistics(history, 'UTC');
+      
+      expect(stats.totalFasts).toBe(0);
+      expect(stats.totalHours).toBe(0);
+      expect(stats.averageDuration).toBe(0);
+      expect(stats.longestFast).toBe(0);
+    });
+
+    it('should handle single fast in month', () => {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const thisMonthDay = new Date(startOfMonth.getTime() + 10 * 24 * 60 * 60 * 1000);
+      
+      const history: FastEntry[] = [
+        {
+          startedAt: thisMonthDay.toISOString(),
+          endedAt: thisMonthDay.toISOString(),
+          duration: 24 * 60 * 60 * 1000, // 24 hours
+          endedBy: testUser
+        }
+      ];
+      
+      const stats = getMonthlyStatistics(history, 'UTC');
+      
+      expect(stats.totalFasts).toBe(1);
+      expect(stats.totalHours).toBe(24);
+      expect(stats.averageDuration).toBe(24 * 60 * 60 * 1000);
+      expect(stats.longestFast).toBe(24 * 60 * 60 * 1000);
     });
   });
 });
