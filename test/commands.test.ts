@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { 
   handleStartCommand, 
   handleStatusCommand, 
@@ -224,6 +224,58 @@ describe('Commands Module', () => {
       expect(result.text).toContain("You've been fasting for");
       expect(result.replyMarkup?.inline_keyboard?.[0]?.[0]?.text).toBe('🛑 End Fast');
     });
+
+    it('should handle time adjustment for new fast', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      const result = await handleFastCommand(chatId, testUser, messageId, env, '/f -2h');
+      
+      expect(result.text).toContain('✅ Fast started at');
+      expect(result.text).toContain('(adjusted from your input)');
+    });
+
+    it('should return error for invalid time adjustment', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      const result = await handleFastCommand(chatId, testUser, messageId, env, '/f invalid');
+      
+      expect(result.text).toContain('❌');
+      expect(result.text).toContain('Invalid time format');
+    });
   });
 
   describe('handleEndCommand', () => {
@@ -268,6 +320,74 @@ describe('Commands Module', () => {
       expect(result.text).toContain('✅ Great job! You fasted for');
       expect(result.text).toContain('1st fast this week');
       expect(result.replyMarkup?.inline_keyboard?.[0]?.[0]?.text).toBe('🚀 Start Fast');
+    });
+
+    it('should handle time adjustment for ending fast', async () => {
+      // Mock time to ensure test is deterministic
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-08-19T18:00:00.000Z')); // 6:00 PM UTC (8:00 PM Europe/Paris)
+      
+      try {
+        const chatId = 12345;
+        const messageId = 100;
+        
+        // Set up authentication
+        const keyHash = 'sha256:testhash';
+        const apiKeyData: ApiKeyData = {
+          name: 'Test Key',
+          expiry: new Date(Date.now() + 86400000).toISOString(),
+          created: new Date().toISOString()
+        };
+        await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+        
+        const chatAuth: ChatAuthData = {
+          api_key_hash: keyHash,
+          authenticated_at: new Date().toISOString(),
+          authenticated_by: testUser
+        };
+        await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+        
+        // Start a fast first (at 10:00 AM Europe/Paris = 8:00 UTC, earlier than current 18:00 UTC)
+        await handleFastCommand(chatId, testUser, messageId, env, '/f 10:00');
+        
+        // End with time adjustment (16:00 Europe/Paris = 14:00 UTC, which is after start but before current 18:00 UTC)
+        const result = await handleEndCommand(chatId, testUser, messageId, env, '/e 16:00');
+        
+        expect(result.text).toContain('✅ Great job! You fasted for');
+        expect(result.text).toContain('(adjusted from your input)');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('should return error for invalid end time adjustment', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication  
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      // Start a fast first
+      await handleFastCommand(chatId, testUser, messageId, env);
+      
+      // Try to end with invalid time adjustment
+      const result = await handleEndCommand(chatId, testUser, messageId, env, '/e invalid');
+      
+      expect(result.text).toContain('❌');
+      expect(result.text).toContain('Invalid time format');
     });
 
     it('should show last fast when not currently fasting', async () => {

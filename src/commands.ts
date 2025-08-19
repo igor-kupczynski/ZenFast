@@ -18,6 +18,7 @@ import {
 } from './fasting';
 import { createSingleButtonKeyboard } from './telegram';
 import { getOrdinalSuffix } from './utils';
+import { parseTimeAdjustment, validateTimelineConsistency } from './time-adjustments';
 
 export interface CommandResult {
   text: string;
@@ -91,7 +92,8 @@ export async function handleFastCommand(
   chatId: number,
   user: User,
   messageId: number,
-  env: Env
+  env: Env,
+  messageText?: string
 ): Promise<CommandResult> {
   try {
     const authenticated = await isAuthenticated(chatId, env);
@@ -115,7 +117,42 @@ export async function handleFastCommand(
         replyMarkup: createSingleButtonKeyboard("🛑 End Fast", "end_fast")
       };
     } else {
-      const result = await startFast(user.id, user, env);
+      // Parse time adjustment if provided
+      let customStartTime: Date | undefined;
+      if (messageText) {
+        const parts = messageText.split(' ');
+        if (parts.length > 1) {
+          const timeInput = parts.slice(1).join(' ');
+          const parseResult = parseTimeAdjustment(timeInput, new Date(), userData.timezone);
+          
+          if (parseResult.error) {
+            return {
+              text: `❌ ${parseResult.error}`,
+              replyToMessageId: messageId
+            };
+          }
+          
+          if (parseResult.adjustment) {
+            // Validate timeline consistency
+            const validation = validateTimelineConsistency(
+              parseResult.adjustment.value,
+              userData.currentFast,
+              true
+            );
+            
+            if (!validation.valid) {
+              return {
+                text: `❌ ${validation.error}`,
+                replyToMessageId: messageId
+              };
+            }
+            
+            customStartTime = parseResult.adjustment.value;
+          }
+        }
+      }
+      
+      const result = await startFast(user.id, user, env, customStartTime);
       if (!result.success) {
         return {
           text: result.error || "Failed to start fast. Please try again.",
@@ -124,8 +161,10 @@ export async function handleFastCommand(
       }
       
       const startTime = formatTimeInTimezone(result.startTime!, result.userData.timezone);
+      const timeNote = customStartTime ? ` (adjusted from your input)` : '';
+      
       return {
-        text: `✅ Fast started at ${startTime}`,
+        text: `✅ Fast started at ${startTime}${timeNote}`,
         replyToMessageId: messageId,
         replyMarkup: createSingleButtonKeyboard("🛑 End Fast", "end_fast")
       };
@@ -143,7 +182,8 @@ export async function handleEndCommand(
   chatId: number,
   user: User,
   messageId: number,
-  env: Env
+  env: Env,
+  messageText?: string
 ): Promise<CommandResult> {
   try {
     const authenticated = await isAuthenticated(chatId, env);
@@ -157,10 +197,45 @@ export async function handleEndCommand(
     const userData = await getUserFastingData(user.id, env);
     
     if (userData.currentFast) {
-      const result = await endFast(user.id, user, env);
+      // Parse time adjustment if provided
+      let customEndTime: Date | undefined;
+      if (messageText) {
+        const parts = messageText.split(' ');
+        if (parts.length > 1) {
+          const timeInput = parts.slice(1).join(' ');
+          const parseResult = parseTimeAdjustment(timeInput, new Date(), userData.timezone);
+          
+          if (parseResult.error) {
+            return {
+              text: `❌ ${parseResult.error}`,
+              replyToMessageId: messageId
+            };
+          }
+          
+          if (parseResult.adjustment) {
+            // Validate timeline consistency
+            const validation = validateTimelineConsistency(
+              parseResult.adjustment.value,
+              userData.currentFast,
+              false
+            );
+            
+            if (!validation.valid) {
+              return {
+                text: `❌ ${validation.error}`,
+                replyToMessageId: messageId
+              };
+            }
+            
+            customEndTime = parseResult.adjustment.value;
+          }
+        }
+      }
+      
+      const result = await endFast(user.id, user, env, customEndTime);
       if (!result.success || !result.duration) {
         return {
-          text: "Failed to end fast. Please try again.",
+          text: result.error || "Failed to end fast. Please try again.",
           replyToMessageId: messageId
         };
       }
@@ -175,8 +250,10 @@ export async function handleEndCommand(
         weekText = ` (Your ${fastsThisWeek}${getOrdinalSuffix(fastsThisWeek)} fast this week)`;
       }
       
+      const timeNote = customEndTime ? ` (adjusted from your input)` : '';
+      
       return {
-        text: `✅ Great job! You fasted for ${durationText}${weekText}`,
+        text: `✅ Great job! You fasted for ${durationText}${weekText}${timeNote}`,
         replyToMessageId: messageId,
         replyMarkup: createSingleButtonKeyboard("🚀 Start Fast", "start_fast")
       };
@@ -444,10 +521,10 @@ export async function routeCommand(
       return await handleStatusCommand(chatId, user, messageId, env);
     case 'fast':
     case 'f':
-      return await handleFastCommand(chatId, user, messageId, env);
+      return await handleFastCommand(chatId, user, messageId, env, messageText);
     case 'end':
     case 'e':
-      return await handleEndCommand(chatId, user, messageId, env);
+      return await handleEndCommand(chatId, user, messageId, env, messageText);
     case 'stats':
       return await handleStatsCommand(chatId, user, messageId, env);
     case 'timezone':
