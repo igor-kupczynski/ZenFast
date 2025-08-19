@@ -18,7 +18,7 @@ import {
 } from './fasting';
 import { createSingleButtonKeyboard } from './telegram';
 import { getOrdinalSuffix } from './utils';
-import { parseTimeAdjustment, validateTimelineConsistency, formatAdjustedTime } from './time-adjustments';
+import { parseTimeAdjustment, validateTimelineConsistency } from './time-adjustments';
 
 export interface CommandResult {
   text: string;

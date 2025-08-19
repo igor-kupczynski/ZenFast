@@ -67,7 +67,7 @@ describe('parseTimeAdjustment', () => {
 
     test('returns error for invalid unit', () => {
       const result = parseTimeAdjustment('-2x', baseTime, timezone);
-      expect(result.error).toBe('Unsupported time unit: x. Use h (hours), m (minutes), or d (days)');
+      expect(result.error).toBe('Invalid time format: -2x. Use formats like: -2h, -30m, -1d, 14:00, 09:30');
     });
   });
 
@@ -127,39 +127,39 @@ describe('validateTimelineConsistency', () => {
   const eightDaysAgo = new Date('2024-01-07T10:00:00.000Z');
 
   test('allows valid start time in the past', () => {
-    const result = validateTimelineConsistency(twoHoursAgo, undefined, true);
+    const result = validateTimelineConsistency(twoHoursAgo, undefined, true, now);
     expect(result.valid).toBe(true);
     expect(result.error).toBeUndefined();
   });
 
   test('rejects future start time', () => {
-    const result = validateTimelineConsistency(twoHoursFuture, undefined, true);
+    const result = validateTimelineConsistency(twoHoursFuture, undefined, true, now);
     expect(result.valid).toBe(false);
     expect(result.error).toBe('Cannot start a fast in the future');
   });
 
   test('rejects start time too far in the past', () => {
-    const result = validateTimelineConsistency(eightDaysAgo, undefined, true);
+    const result = validateTimelineConsistency(eightDaysAgo, undefined, true, now);
     expect(result.valid).toBe(false);
     expect(result.error).toBe('Cannot start a fast more than 7 days ago');
   });
 
   test('allows valid end time after fast start', () => {
     const existingFast = { startedAt: twoHoursAgo.toISOString() };
-    const result = validateTimelineConsistency(now, existingFast, false);
+    const result = validateTimelineConsistency(now, existingFast, false, now);
     expect(result.valid).toBe(true);
   });
 
   test('rejects end time before fast start', () => {
     const existingFast = { startedAt: now.toISOString() };
-    const result = validateTimelineConsistency(twoHoursAgo, existingFast, false);
+    const result = validateTimelineConsistency(twoHoursAgo, existingFast, false, now);
     expect(result.valid).toBe(false);
     expect(result.error).toContain('Cannot end a fast before it started');
   });
 
   test('rejects future end time', () => {
     const existingFast = { startedAt: twoHoursAgo.toISOString() };
-    const result = validateTimelineConsistency(twoHoursFuture, existingFast, false);
+    const result = validateTimelineConsistency(twoHoursFuture, existingFast, false, now);
     expect(result.valid).toBe(false);
     expect(result.error).toBe('Cannot end a fast in the future');
   });

@@ -18,10 +18,10 @@ export function parseTimeAdjustment(input: string, baseTime: Date, timezone: str
 
   // Try relative time format first (e.g., -2h, -30m, -1d)
   const relativeMatch = trimmed.match(/^([+-])?(\d+)([hmd])$/);
-  if (relativeMatch) {
+  if (relativeMatch && relativeMatch[2] && relativeMatch[3]) {
     const sign = relativeMatch[1] === '+' ? 1 : -1; // Default to negative (ago)
-    const amount = parseInt(relativeMatch[2]!, 10);
-    const unit = relativeMatch[3]!;
+    const amount = parseInt(relativeMatch[2], 10);
+    const unit = relativeMatch[3];
     
     if (isNaN(amount) || amount <= 0) {
       return { error: `Invalid time amount: ${trimmed}` };
@@ -54,9 +54,9 @@ export function parseTimeAdjustment(input: string, baseTime: Date, timezone: str
 
   // Try absolute time format (e.g., 14:00, 09:30)
   const absoluteMatch = trimmed.match(/^(\d{1,2}):(\d{2})$/);
-  if (absoluteMatch) {
-    const hours = parseInt(absoluteMatch[1]!, 10);
-    const minutes = parseInt(absoluteMatch[2]!, 10);
+  if (absoluteMatch && absoluteMatch[1] && absoluteMatch[2]) {
+    const hours = parseInt(absoluteMatch[1], 10);
+    const minutes = parseInt(absoluteMatch[2], 10);
     
     if (hours < 0 || hours > 23) {
       return { error: `Invalid hour: ${hours}. Must be 0-23` };
@@ -66,41 +66,27 @@ export function parseTimeAdjustment(input: string, baseTime: Date, timezone: str
       return { error: `Invalid minutes: ${minutes}. Must be 0-59` };
     }
     
-    // Create absolute time for today in user's timezone
-    const adjustedTime = new Date();
-    
     try {
-      // Convert to user's timezone and set the time
-      const todayInTimezone = new Intl.DateTimeFormat('en-CA', {
-        timeZone: timezone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      }).format(adjustedTime);
+      // Get today's date in the user's timezone
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date());
+      const timeString = `${today}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
       
-      const timeString = `${todayInTimezone}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+      // Create a date object representing the time in the user's timezone
+      // We'll interpret this as a local time in the target timezone
+      const localDate = new Date(timeString);
       
-      // Parse as if it's in UTC, then adjust for timezone offset
-      const parsedTime = new Date(timeString);
+      // Get the timezone offset difference to convert to UTC
+      const utcTime = new Date(localDate.toLocaleString('en-US', { timeZone: 'UTC' }));
+      const timezoneTime = new Date(localDate.toLocaleString('en-US', { timeZone: timezone }));
+      const offsetMs = utcTime.getTime() - timezoneTime.getTime();
       
-      // Get the timezone offset for the target timezone
-      const tempDate = new Date();
-      const utcOffset = tempDate.getTimezoneOffset() * 60000; // Convert to milliseconds
-      const targetTime = new Date(parsedTime.getTime() - utcOffset);
-      
-      // Adjust for the target timezone
-      const targetFormatter = new Intl.DateTimeFormat('en', {
-        timeZone: timezone,
-        timeZoneName: 'longOffset'
-      });
-      
-      const targetOffset = getTimezoneOffset(timezone);
-      const finalTime = new Date(parsedTime.getTime() - (targetOffset * 60000));
+      // Apply the offset to get the correct UTC time
+      const adjustedTime = new Date(localDate.getTime() + offsetMs);
       
       return {
         adjustment: {
           type: 'absolute',
-          value: finalTime,
+          value: adjustedTime,
           originalInput: trimmed
         }
       };
@@ -112,27 +98,13 @@ export function parseTimeAdjustment(input: string, baseTime: Date, timezone: str
   return { error: `Invalid time format: ${trimmed}. Use formats like: -2h, -30m, -1d, 14:00, 09:30` };
 }
 
-function getTimezoneOffset(timezone: string): number {
-  try {
-    const now = new Date();
-    const utc = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 
-                        now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds());
-    
-    const target = new Date(utc.toLocaleString('en-US', { timeZone: timezone }));
-    const diff = utc.getTime() - target.getTime();
-    
-    return diff / (1000 * 60); // Return offset in minutes
-  } catch (error) {
-    return 0; // Fallback to UTC
-  }
-}
 
 export function validateTimelineConsistency(
   adjustedTime: Date, 
   existingCurrentFast?: { startedAt: string },
-  isStartCommand: boolean = true
+  isStartCommand: boolean = true,
+  now: Date = new Date()
 ): { valid: boolean; error?: string } {
-  const now = new Date();
   
   // Check if adjusted time is in the future
   if (adjustedTime > now) {
