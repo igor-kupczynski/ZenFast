@@ -12,8 +12,7 @@ import {
   getLastFast,
   getRecentFasts,
   getWeeklyStatistics,
-  getMonthlyStatistics,
-  PeriodStatistics
+  getMonthlyStatistics
 } from '../src/fasting';
 import { Env, User, UserFastingData, FastEntry } from '../src/types';
 import { MockKV } from './utils/mockKv';

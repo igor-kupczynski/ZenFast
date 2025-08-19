@@ -144,7 +144,10 @@ export function getFastsThisWeek(history: FastEntry[], _timezone: string): numbe
     // Get start of week (Monday) in user's timezone
     const startOfWeek = new Date(now);
     const dayOfWeek = startOfWeek.getDay();
-    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, so 6 days back
+    // Calculate days back to Monday (week start)
+    // Sunday = 0, Monday = 1, Tuesday = 2, etc.
+    // For Sunday: go back 6 days, for other days: go back (dayOfWeek - 1) days
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     startOfWeek.setDate(startOfWeek.getDate() - daysToMonday);
     startOfWeek.setHours(0, 0, 0, 0);
     
@@ -175,19 +178,27 @@ export interface PeriodStatistics {
 
 export function getWeeklyStatistics(history: FastEntry[], timezone: string): PeriodStatistics {
   try {
+    // Get current time in user's timezone
     const now = new Date();
+    const nowInUserTz = new Date(now.toLocaleString("en-US", { timeZone: timezone }));
     
-    // Get start of week (Monday) in UTC, then adjust for timezone
-    const startOfWeek = new Date(now);
+    // Get start of week (Monday) in user's timezone
+    const startOfWeek = new Date(nowInUserTz);
     const dayOfWeek = startOfWeek.getDay();
-    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, so 6 days back
+    // Calculate days back to Monday (week start)
+    // Sunday = 0, Monday = 1, Tuesday = 2, etc.
+    // For Sunday: go back 6 days, for other days: go back (dayOfWeek - 1) days
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     startOfWeek.setDate(startOfWeek.getDate() - daysToMonday);
     startOfWeek.setHours(0, 0, 0, 0);
     
-    // Filter fasts for this week
+    // Convert back to UTC for comparison with stored timestamps
+    const startOfWeekUTC = new Date(startOfWeek.toLocaleString("en-US", { timeZone: "UTC" }));
+    
+    // Filter fasts for this week (compare with UTC timestamps)
     const weekFasts = history.filter(fast => {
       const fastDate = new Date(fast.endedAt);
-      return fastDate >= startOfWeek;
+      return fastDate >= startOfWeekUTC;
     });
     
     return calculatePeriodStatistics(weekFasts);
@@ -198,16 +209,21 @@ export function getWeeklyStatistics(history: FastEntry[], timezone: string): Per
 
 export function getMonthlyStatistics(history: FastEntry[], timezone: string): PeriodStatistics {
   try {
+    // Get current time in user's timezone
     const now = new Date();
+    const nowInUserTz = new Date(now.toLocaleString("en-US", { timeZone: timezone }));
     
-    // Get start of month in UTC, then adjust for timezone
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    // Get start of month in user's timezone
+    const startOfMonth = new Date(nowInUserTz.getFullYear(), nowInUserTz.getMonth(), 1);
     startOfMonth.setHours(0, 0, 0, 0);
     
-    // Filter fasts for this month
+    // Convert back to UTC for comparison with stored timestamps
+    const startOfMonthUTC = new Date(startOfMonth.toLocaleString("en-US", { timeZone: "UTC" }));
+    
+    // Filter fasts for this month (compare with UTC timestamps)
     const monthFasts = history.filter(fast => {
       const fastDate = new Date(fast.endedAt);
-      return fastDate >= startOfMonth;
+      return fastDate >= startOfMonthUTC;
     });
     
     return calculatePeriodStatistics(monthFasts);
@@ -222,7 +238,7 @@ function calculatePeriodStatistics(fasts: FastEntry[]): PeriodStatistics {
   }
   
   const totalDuration = fasts.reduce((sum, fast) => sum + fast.duration, 0);
-  const longestFast = Math.max(...fasts.map(fast => fast.duration));
+  const longestFast = fasts.reduce((max, fast) => Math.max(max, fast.duration), 0);
   const averageDuration = totalDuration / fasts.length;
   const totalHours = Math.round(totalDuration / (1000 * 60 * 60) * 10) / 10; // Round to 1 decimal
   
