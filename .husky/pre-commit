@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Pre-commit hook to run type checking and build
+# This ensures code quality before commits
+
+echo "🔍 Running pre-commit checks..."
+
+# Change to the repository root (handle worktree case)
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+# Run typecheck
+echo "⚡ Running TypeScript type check..."
+if ! npm run typecheck; then
+    echo "❌ TypeScript type check failed!"
+    echo "Please fix type errors before committing."
+    exit 1
+fi
+echo "✅ TypeScript type check passed!"
+
+# Run build
+echo "🔨 Running build..."
+if ! npm run build; then
+    echo "❌ Build failed!"
+    echo "Please fix build errors before committing."
+    exit 1
+fi
+echo "✅ Build passed!"
+
+echo "🎉 All pre-commit checks passed!"
+exit 0
