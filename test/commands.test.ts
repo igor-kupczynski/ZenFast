@@ -276,6 +276,33 @@ describe('Commands Module', () => {
       expect(result.text).toContain('❌');
       expect(result.text).toContain('Invalid time format');
     });
+
+    it('should return error for natural language date format "yesterday 14:00"', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      const result = await handleFastCommand(chatId, testUser, messageId, env, '/f yesterday 14:00');
+      
+      expect(result.text).toContain('❌');
+      expect(result.text).toContain('Invalid time format: yesterday 14:00');
+      expect(result.text).toContain('Use formats like: -2h, -30m, -1d, 14:00, 09:30');
+    });
   });
 
   describe('handleEndCommand', () => {

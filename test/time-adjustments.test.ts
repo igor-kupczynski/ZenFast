@@ -117,6 +117,21 @@ describe('parseTimeAdjustment', () => {
       expect(result.error).toBeUndefined();
       expect(result.adjustment).toBeUndefined();
     });
+
+    test('returns error for natural language date formats like "yesterday 14:00"', () => {
+      const result = parseTimeAdjustment('yesterday 14:00', baseTime, timezone);
+      expect(result.error).toBe('Invalid time format: yesterday 14:00. Use formats like: -2h, -30m, -1d, 14:00, 09:30');
+    });
+
+    test('returns error for "today 14:00" format', () => {
+      const result = parseTimeAdjustment('today 14:00', baseTime, timezone);
+      expect(result.error).toBe('Invalid time format: today 14:00. Use formats like: -2h, -30m, -1d, 14:00, 09:30');
+    });
+
+    test('returns error for "tomorrow 14:00" format', () => {
+      const result = parseTimeAdjustment('tomorrow 14:00', baseTime, timezone);
+      expect(result.error).toBe('Invalid time format: tomorrow 14:00. Use formats like: -2h, -30m, -1d, 14:00, 09:30');
+    });
   });
 });
 
