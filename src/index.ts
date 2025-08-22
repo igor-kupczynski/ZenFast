@@ -79,6 +79,53 @@ export default {
       return new Response('Bad Request', { status: 400 });
     }
 
+    // Handle callback queries early (before message-based filtering)
+    if (update.callback_query) {
+      const botToken = env.BOT_TOKEN;
+      if (!botToken) {
+        console.error('BOT_TOKEN environment variable is required');
+        return new Response('OK', { status: 200 });
+      }
+
+      const telegramApi = createTelegramApi(botToken);
+      try {
+        const callbackResult = await routeCallback(update.callback_query, env);
+
+        // Answer the callback query to remove loading state
+        const answerParams: AnswerCallbackQueryParams = {
+          callback_query_id: update.callback_query.id,
+          show_alert: callbackResult.showAlert || false
+        };
+        if (callbackResult.text) {
+          answerParams.text = callbackResult.text;
+        }
+        const answerResult = await telegramApi.answerCallbackQuery(answerParams);
+        if (!answerResult.ok) {
+          console.error('Failed to answer callback query:', answerResult.description);
+        }
+
+        // Edit the original message if requested
+        if (callbackResult.editMessage) {
+          const editParams: EditMessageTextParams = {
+            chat_id: callbackResult.editMessage.chatId,
+            message_id: callbackResult.editMessage.messageId,
+            text: callbackResult.editMessage.newText
+          };
+          if (callbackResult.editMessage.newKeyboard) {
+            editParams.reply_markup = callbackResult.editMessage.newKeyboard;
+          }
+          const editResult = await telegramApi.editMessageText(editParams);
+          if (!editResult.ok) {
+            console.error('Failed to edit message:', editResult.description);
+          }
+        }
+      } catch (error) {
+        console.error('Error processing callback query:', error);
+      }
+
+      return new Response('OK', { status: 200 });
+    }
+
     if (!shouldProcessMessage(update, env)) {
       return new Response('OK', { status: 200 });
     }
@@ -101,44 +148,6 @@ export default {
     const telegramApi = createTelegramApi(botToken);
 
     try {
-      // Check if this is a callback query
-      if (update.callback_query) {
-        const callbackResult = await routeCallback(update.callback_query, env);
-        
-        // Answer the callback query to remove loading state
-        const answerParams: AnswerCallbackQueryParams = {
-          callback_query_id: update.callback_query.id,
-          show_alert: callbackResult.showAlert || false
-        };
-        if (callbackResult.text) {
-          answerParams.text = callbackResult.text;
-        }
-        const answerResult = await telegramApi.answerCallbackQuery(answerParams);
-
-        if (!answerResult.ok) {
-          console.error('Failed to answer callback query:', answerResult.description);
-        }
-
-        // Edit the original message if requested
-        if (callbackResult.editMessage) {
-          const editParams: EditMessageTextParams = {
-            chat_id: callbackResult.editMessage.chatId,
-            message_id: callbackResult.editMessage.messageId,
-            text: callbackResult.editMessage.newText
-          };
-          if (callbackResult.editMessage.newKeyboard) {
-            editParams.reply_markup = callbackResult.editMessage.newKeyboard;
-          }
-          const editResult = await telegramApi.editMessageText(editParams);
-
-          if (!editResult.ok) {
-            console.error('Failed to edit message:', editResult.description);
-          }
-        }
-
-        return new Response('OK', { status: 200 });
-      }
-
       // Check if this is a command
       const command = extractCommand(messageText);
       
