@@ -112,7 +112,7 @@ export async function handleFastCommand(
       const startTime = formatTimeInTimezone(userData.currentFast.startedAt, userData.timezone);
       
       return {
-        text: `You've been fasting for ${durationText} (started at ${startTime})`,
+        text: `You've been fasting for ${durationText} (started at ${startTime}). Please end your current fast before starting a new one.`,
         replyToMessageId: messageId,
         replyMarkup: createSingleButtonKeyboard("🛑 End Fast", "end_fast")
       };
