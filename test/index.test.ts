@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import worker from '../src/index.ts';
-import { Env } from '../src/types.ts';
+import worker from '../src/index';
+import { Env } from '../src/types';
 
 // Mock fetch globally
 const mockFetch = vi.fn();

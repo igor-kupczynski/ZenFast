@@ -4,7 +4,7 @@ This document captures practical, validated guidance for working on this reposit
 
 Important conventions for this repository:
 - Always run npm commands with CI=TRUE to avoid interactive prompts in automation.
-- TypeScript must compile cleanly (strict). No .js extensions in imports.
+- TypeScript must compile cleanly (strict). Use extensionless relative imports (no .js or .ts extensions).
 - Tests must pass before code is considered complete.
 
 
@@ -85,7 +85,7 @@ Adding new tests (patterns and constraints):
   - Use descriptive test names; group with describe blocks.
   - Make all declared variables meaningful and asserted.
   - Keep tests deterministic; prefer fixed inputs/outputs.
-- Import style: relative imports without .js extensions (e.g., import { foo } from '../src/foo').
+- Import style: use extensionless relative imports (no .js or .ts extensions) (e.g., import { foo } from '../src/foo').
 - Avoid hitting real networks in unit tests; if needed, stub fetch or other effects.
 
 Example: creating and running a simple test (validated)
