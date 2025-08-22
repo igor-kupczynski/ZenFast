@@ -10,9 +10,9 @@ const mockFetch = vi.fn();
 vi.spyOn(console, 'error').mockImplementation(() => {});
 
 // Spy on routeCallback to avoid deep dependencies and KV access
-import * as callbacks from '../src/callbacks.ts';
+import * as callbacks from '../src/callbacks';
 
-import type { Env } from '../src/types.ts';
+import type { Env } from '../src/types';
 
 const mockEnv: Env = {
   BOT_TOKEN: 'test-bot-token',
@@ -66,7 +66,7 @@ describe('Inline keyboard callback handling', () => {
       json: () => Promise.resolve({ ok: true }),
     });
 
-    const worker = (await import('../src/index.ts')).default;
+    const worker = (await import('../src/index')).default;
 
     // Act
     const response = await worker.fetch(request, mockEnv);

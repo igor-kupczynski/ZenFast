@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { TelegramApi, createTelegramApi } from '../src/telegram.ts';
+import { TelegramApi, createTelegramApi } from '../src/telegram';
 
 // Mock fetch globally
 const mockFetch = vi.fn();

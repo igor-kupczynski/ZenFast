@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { validateWebhookSecret, parseWebhookUpdate, shouldProcessMessage, extractChatId, extractMessageText } from '../src/webhook.ts';
-import { Env, Update } from '../src/types.ts';
+import { validateWebhookSecret, parseWebhookUpdate, shouldProcessMessage, extractChatId, extractMessageText } from '../src/webhook';
+import { Env, Update } from '../src/types';
 
 // Mock environment
 const mockEnv: Env = {
