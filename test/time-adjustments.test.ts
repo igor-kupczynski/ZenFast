@@ -117,6 +117,15 @@ describe('parseTimeAdjustment', () => {
       expect(result.error).toBeUndefined();
       expect(result.adjustment).toBeUndefined();
     });
+
+    test.each([
+      'yesterday 14:00',
+      'today 14:00',
+      'tomorrow 14:00',
+    ])('returns error for natural language date format "%s"', (input) => {
+      const result = parseTimeAdjustment(input, baseTime, timezone);
+      expect(result.error).toBe(`Invalid time format: ${input}. Use formats like: -2h, -30m, -1d, 14:00, 09:30`);
+    });
   });
 });
 
