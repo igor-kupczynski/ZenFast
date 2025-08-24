@@ -16,7 +16,7 @@ import {
   getMonthlyStatistics,
   PeriodStatistics
 } from './fasting';
-import { createSingleButtonKeyboard } from './telegram';
+import { createSingleButtonKeyboard, createInlineKeyboard } from './telegram';
 import { getOrdinalSuffix } from './utils';
 import { parseTimeAdjustment, validateTimelineConsistency } from './time-adjustments';
 
@@ -112,9 +112,12 @@ export async function handleFastCommand(
       const startTime = formatTimeInTimezone(userData.currentFast.startedAt, userData.timezone);
       
       return {
-        text: `You've been fasting for ${durationText} (started at ${startTime}). Please end your current fast before starting a new one.`,
+        text: `You've been fasting for ${durationText} (started at ${startTime}). Please end your current fast (or cancel it) before starting a new one.`,
         replyToMessageId: messageId,
-        replyMarkup: createSingleButtonKeyboard("🛑 End Fast", "end_fast")
+        replyMarkup: createInlineKeyboard([[
+          { text: "🛑 End Fast", callback_data: "end_fast" },
+          { text: "🗑️ Cancel Fast", callback_data: "cancel_fast" }
+        ]])
       };
     } else {
       // Parse time adjustment if provided
@@ -166,7 +169,10 @@ export async function handleFastCommand(
       return {
         text: `✅ Fast started at ${startTime}${timeNote}`,
         replyToMessageId: messageId,
-        replyMarkup: createSingleButtonKeyboard("🛑 End Fast", "end_fast")
+        replyMarkup: createInlineKeyboard([[
+          { text: "🛑 End Fast", callback_data: "end_fast" },
+          { text: "🗑️ Cancel Fast", callback_data: "cancel_fast" }
+        ]])
       };
     }
   } catch (error) {
@@ -525,6 +531,8 @@ export async function routeCommand(
     case 'end':
     case 'e':
       return await handleEndCommand(chatId, user, messageId, env, messageText);
+    case 'cancel':
+      return await handleCancelCommand(chatId, user, messageId, env);
     case 'stats':
       return await handleStatsCommand(chatId, user, messageId, env);
     case 'timezone':
@@ -541,4 +549,50 @@ export async function routeCommand(
 
 function formatDate(date: Date): string {
   return date.toISOString().split('T')[0] || '';
+}
+
+export async function handleCancelCommand(
+  chatId: number,
+  user: User,
+  messageId: number,
+  env: Env
+): Promise<CommandResult> {
+  try {
+    const authenticated = await isAuthenticated(chatId, env);
+    if (!authenticated) {
+      return {
+        text: "Please authenticate by sending your API key first.",
+        replyToMessageId: messageId
+      };
+    }
+
+    const userData = await getUserFastingData(user.id, env);
+    if (!userData.currentFast) {
+      return {
+        text: "You're not currently fasting.",
+        replyToMessageId: messageId,
+        replyMarkup: createSingleButtonKeyboard("🚀 Start Fast", "start_fast")
+      };
+    }
+
+    // Ask for confirmation before canceling
+    const duration = getCurrentFastDuration(userData.currentFast);
+    const durationText = formatDuration(duration);
+    const startTime = formatTimeInTimezone(userData.currentFast.startedAt, userData.timezone);
+
+    return {
+      text: `❓ Cancel current fast?\nYou've been fasting for ${durationText} (started at ${startTime}).\nThis will discard the fast. Are you sure?` ,
+      replyToMessageId: messageId,
+      replyMarkup: createInlineKeyboard([[
+        { text: "✅ Yes, cancel", callback_data: "cancel_fast_yes" },
+        { text: "↩️ No, keep fasting", callback_data: "cancel_fast_no" }
+      ]])
+    };
+  } catch (error) {
+    console.error('Error in handleCancelCommand:', error);
+    return {
+      text: "An error occurred while processing your request. Please try again.",
+      replyToMessageId: messageId
+    };
+  }
 }

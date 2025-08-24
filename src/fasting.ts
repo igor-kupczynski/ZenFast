@@ -178,6 +178,16 @@ export function getRecentFasts(history: FastEntry[], limit: number = 5): FastEnt
   return history.slice(-limit).reverse(); // Get last N fasts, most recent first
 }
 
+export async function cancelFast(userId: number, env: Env): Promise<{ success: boolean; userData: UserFastingData; error?: string }> {
+  const userData = await getUserFastingData(userId, env);
+  if (!userData.currentFast) {
+    return { success: false, userData, error: "You are not currently fasting" };
+  }
+  delete userData.currentFast;
+  await saveUserFastingData(userId, userData, env);
+  return { success: true, userData };
+}
+
 export interface PeriodStatistics {
   totalFasts: number;
   totalHours: number;
@@ -185,31 +195,17 @@ export interface PeriodStatistics {
   longestFast: number; // in milliseconds
 }
 
-export function getWeeklyStatistics(history: FastEntry[], timezone: string): PeriodStatistics {
+export function getWeeklyStatistics(history: FastEntry[], _timezone: string): PeriodStatistics {
   try {
-    // Get current time in user's timezone
+    // Align week boundary logic with getFastsThisWeek: start of week = Monday 00:00 (local time)
     const now = new Date();
-    const nowInUserTz = new Date(now.toLocaleString("en-US", { timeZone: timezone }));
-    
-    // Get start of week (Monday) in user's timezone
-    const startOfWeek = new Date(nowInUserTz);
+    const startOfWeek = new Date(now);
     const dayOfWeek = startOfWeek.getDay();
-    // Calculate days back to Monday (week start)
-    // Sunday = 0, Monday = 1, Tuesday = 2, etc.
-    // For Sunday: go back 6 days, for other days: go back (dayOfWeek - 1) days
     const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     startOfWeek.setDate(startOfWeek.getDate() - daysToMonday);
     startOfWeek.setHours(0, 0, 0, 0);
-    
-    // Convert back to UTC for comparison with stored timestamps
-    const startOfWeekUTC = new Date(startOfWeek.toLocaleString("en-US", { timeZone: "UTC" }));
-    
-    // Filter fasts for this week (compare with UTC timestamps)
-    const weekFasts = history.filter(fast => {
-      const fastDate = new Date(fast.endedAt);
-      return fastDate >= startOfWeekUTC;
-    });
-    
+
+    const weekFasts = history.filter(fast => new Date(fast.endedAt) >= startOfWeek);
     return calculatePeriodStatistics(weekFasts);
   } catch (error) {
     return { totalFasts: 0, totalHours: 0, averageDuration: 0, longestFast: 0 };
