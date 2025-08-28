@@ -118,6 +118,28 @@ export function formatTimeInTimezone(isoString: string, timezone: string): strin
   }
 }
 
+export function formatDateInTimezone(isoString: string, timezone: string): string {
+  try {
+    const date = new Date(isoString);
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: timezone,
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(date);
+  } catch (error) {
+    // Fallback to UTC if timezone is invalid
+    const date = new Date(isoString);
+    const month = date.toLocaleString('en-GB', { month: 'short' });
+    const day = date.getUTCDate();
+    const hours = date.getUTCHours().toString().padStart(2, '0');
+    const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+    return `${month} ${day}, ${hours}:${minutes}`;
+  }
+}
+
 export function formatRelativeTime(isoString: string, _timezone: string): string {
   try {
     const date = new Date(isoString);

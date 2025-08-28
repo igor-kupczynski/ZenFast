@@ -8,6 +8,7 @@ import {
   handleTimezoneCommand,
   handleWeekCommand,
   handleMonthCommand,
+  handleHistoryCommand,
   extractCommand, 
   routeCommand 
 } from '../src/commands';
@@ -827,6 +828,102 @@ describe('Commands Module', () => {
       
       expect(result.text).toContain('No fasts completed this month yet');
       expect(result.replyMarkup).toBeDefined();
+    });
+  });
+
+  describe('handleHistoryCommand', () => {
+    it('should require authentication', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      const result = await handleHistoryCommand(chatId, testUser, messageId, env);
+      
+      expect(result.text).toContain('Please authenticate by sending your API key first.');
+    });
+
+    it('should show no history message for new user', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      const result = await handleHistoryCommand(chatId, testUser, messageId, env);
+      
+      expect(result.text).toContain('📜 No fasting history yet');
+      expect(result.replyMarkup?.inline_keyboard?.[0]?.[0]?.text).toBe('🚀 Start Fast');
+    });
+
+    it('should display fasting history with bar charts', async () => {
+      const chatId = 12345;
+      const messageId = 100;
+      
+      // Set up authentication
+      const keyHash = 'sha256:testhash';
+      const apiKeyData: ApiKeyData = {
+        name: 'Test Key',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+        created: new Date().toISOString()
+      };
+      await mockApiKeys.put(keyHash, JSON.stringify(apiKeyData));
+      
+      const chatAuth: ChatAuthData = {
+        api_key_hash: keyHash,
+        authenticated_at: new Date().toISOString(),
+        authenticated_by: testUser
+      };
+      await mockChats.put(chatId.toString(), JSON.stringify(chatAuth));
+      
+      // Create some fasting history
+      const history = [
+        {
+          startedAt: new Date('2024-01-01T08:00:00Z').toISOString(),
+          endedAt: new Date('2024-01-01T20:00:00Z').toISOString(),
+          duration: 12 * 60 * 60 * 1000, // 12 hours
+          endedBy: testUser
+        },
+        {
+          startedAt: new Date('2024-01-02T10:00:00Z').toISOString(),
+          endedAt: new Date('2024-01-02T14:00:00Z').toISOString(),
+          duration: 4 * 60 * 60 * 1000, // 4 hours
+          endedBy: testUser
+        },
+        {
+          startedAt: new Date('2024-01-03T06:00:00Z').toISOString(),
+          endedAt: new Date('2024-01-04T06:00:00Z').toISOString(),
+          duration: 24 * 60 * 60 * 1000, // 24 hours
+          endedBy: testUser
+        }
+      ];
+      
+      const userData = {
+        timezone: 'Europe/Paris',
+        history
+      };
+      await mockFasts.put(`user:${testUser.id}`, JSON.stringify(userData));
+      
+      const result = await handleHistoryCommand(chatId, testUser, messageId, env);
+      
+      expect(result.text).toContain('📜 Your fasting history (last 10)');
+      expect(result.text).toContain('24h'); // 24 hour fast
+      expect(result.text).toContain('12h'); // 12 hour fast
+      expect(result.text).toContain('4h'); // 4 hour fast
+      expect(result.text).toContain('▓'); // Bar chart character
+      expect(result.text).toContain('░'); // Empty bar chart character
+      expect(result.replyMarkup?.inline_keyboard?.[0]?.[0]?.text).toBe('🚀 Start Fast');
     });
   });
 });

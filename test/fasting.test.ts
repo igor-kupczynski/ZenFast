@@ -6,6 +6,7 @@ import {
   setUserTimezone,
   formatDuration,
   formatTimeInTimezone,
+  formatDateInTimezone,
   formatRelativeTime,
   getCurrentFastDuration,
   getFastsThisWeek,
@@ -183,6 +184,29 @@ describe('Fasting Module', () => {
       const result = formatTimeInTimezone(isoTime, 'Invalid/Timezone');
       
       expect(result).toBe('15:30'); // Should fallback to UTC
+    });
+  });
+
+  describe('formatDateInTimezone', () => {
+    it('should format date and time in specified timezone', () => {
+      const isoTime = '2024-01-15T15:30:00Z';
+      
+      // Test different timezones
+      const utc = formatDateInTimezone(isoTime, 'UTC');
+      const ny = formatDateInTimezone(isoTime, 'America/New_York');
+      const tokyo = formatDateInTimezone(isoTime, 'Asia/Tokyo');
+      
+      expect(utc).toBe('15 Jan, 15:30');
+      // Note: Exact dates/times depend on DST, but should be valid format
+      expect(ny).toMatch(/^\d{1,2} \w{3}, \d{2}:\d{2}$/);
+      expect(tokyo).toMatch(/^\d{1,2} \w{3}, \d{2}:\d{2}$/);
+    });
+
+    it('should fallback gracefully for invalid timezone', () => {
+      const isoTime = '2024-01-15T15:30:00Z';
+      const result = formatDateInTimezone(isoTime, 'Invalid/Timezone');
+      
+      expect(result).toBe('Jan 15, 15:30'); // Should fallback to UTC
     });
   });
 

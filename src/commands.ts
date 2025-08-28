@@ -8,6 +8,7 @@ import {
   getCurrentFastDuration, 
   formatDuration, 
   formatTimeInTimezone, 
+  formatDateInTimezone,
   formatRelativeTime, 
   getFastsThisWeek, 
   getLastFast, 
@@ -501,6 +502,65 @@ export async function handleMonthCommand(
   }
 }
 
+export async function handleHistoryCommand(
+  chatId: number,
+  user: User,
+  messageId: number,
+  env: Env
+): Promise<CommandResult> {
+  try {
+    const authenticated = await isAuthenticated(chatId, env);
+    if (!authenticated) {
+      return {
+        text: "Please authenticate by sending your API key first.",
+        replyToMessageId: messageId
+      };
+    }
+
+    const userData = await getUserFastingData(user.id, env);
+    const recentFasts = getRecentFasts(userData.history, 10);
+    
+    if (recentFasts.length === 0) {
+      return {
+        text: "📜 No fasting history yet. Start your first fast to build your history!",
+        replyToMessageId: messageId,
+        replyMarkup: createSingleButtonKeyboard("🚀 Start Fast", "start_fast")
+      };
+    }
+    
+    let historyText = "📜 Your fasting history (last 10):\n\n";
+    
+    recentFasts.forEach((fast, index) => {
+      const endDate = formatDateInTimezone(fast.endedAt, userData.timezone);
+      const duration = formatDuration(fast.duration);
+      const hours = fast.duration / (1000 * 60 * 60);
+      
+      // Create bar chart (1 bar = 2 hours, max 12 bars for 24h+)
+      const barCount = Math.min(Math.ceil(hours / 2), 12);
+      const barChart = '▓'.repeat(barCount) + '░'.repeat(Math.max(0, 12 - barCount));
+      
+      historyText += `${index + 1}. ${endDate} • ${duration}\n`;
+      historyText += `   ${barChart}\n\n`;
+    });
+    
+    // Determine appropriate button based on current state
+    const buttonText = userData.currentFast ? "🛑 End Fast" : "🚀 Start Fast";
+    const buttonData = userData.currentFast ? "end_fast" : "start_fast";
+    
+    return {
+      text: historyText.trim(),
+      replyToMessageId: messageId,
+      replyMarkup: createSingleButtonKeyboard(buttonText, buttonData)
+    };
+  } catch (error) {
+    console.error('Error in handleHistoryCommand:', error);
+    return {
+      text: "An error occurred while retrieving your history. Please try again.",
+      replyToMessageId: messageId
+    };
+  }
+}
+
 function formatPeriodStatistics(title: string, stats: PeriodStatistics): string {
   const averageDurationText = formatDuration(stats.averageDuration);
   const longestFastText = formatDuration(stats.longestFast);
@@ -541,6 +601,8 @@ export async function routeCommand(
       return await handleWeekCommand(chatId, user, messageId, env);
     case 'month':
       return await handleMonthCommand(chatId, user, messageId, env);
+    case 'history':
+      return await handleHistoryCommand(chatId, user, messageId, env);
     default:
       // Unknown command - ignore silently
       return null;
